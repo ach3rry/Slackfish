@@ -30,6 +30,85 @@ export const GAME_CONFIG = {
   defaults: {
     areaActions: { workstation: 'working', pantry: 'chatting', restroom: 'phone' } as Record<string, import('../types/game').PlayerAction>,
   },
+
+  // ── 新增系统 ──
+
+  suspicion: {
+    max: 100, startValue: 0,
+    exposureGainPerTick: 0.3,
+    bossSightingNpcFishGain: 5,
+    crowdPantryGain: 3,
+    decayPerSecond: 2,
+    patrolIntervalMultiplier: (s: number) => Math.max(0.3, 1 - s / 150),
+    moodThresholds: { calm: 0, suspicious: 30, angry: 60, furious: 85 } as Record<string, number>,
+  },
+
+  bossAI: {
+    fakeReturnChance: 0.18,
+    fakeReturnDelayMs: 800,
+    suddenStopChance: 0.12,
+    suddenStopDurationMs: 1200,
+    lookBackChance: 0.22,
+    lookBackAngle: Math.PI,
+    lookBackDurationMs: 600,
+    angryExtraSpeed: 40,
+    furiousExtraSpeed: 70,
+    routeVariationCount: 6,
+    npcCatchRadius: 120,
+    npcCatchSuspicionGain: 15,
+  },
+
+  rhythm: {
+    phases: {
+      calm: { durationMin: 6, durationMax: 10, bossChance: 0.3, suspicionDrain: 3 },
+      patrol: { durationMin: 8, durationMax: 15, bossChance: 0.8, suspicionDrain: 0 },
+      pressure: { durationMin: 5, durationMax: 8, bossChance: 1, suspicionDrain: -2 },
+      buffer: { durationMin: 3, durationMax: 5, bossChance: 0.1, suspicionDrain: 5 },
+    } as Record<string, { durationMin: number; durationMax: number; bossChance: number; suspicionDrain: number }>,
+    phaseOrder: ['calm', 'patrol', 'pressure', 'buffer'] as const,
+  },
+
+  disguise: {
+    levels: [
+      { level: 1, requiredFish: 0, exposureMultiplier: 1.0, name: '初级伪装' },
+      { level: 2, requiredFish: 30, exposureMultiplier: 0.7, name: '熟练伪装' },
+      { level: 3, requiredFish: 65, exposureMultiplier: 0.4, name: '大师伪装' },
+    ] as { level: number; requiredFish: number; exposureMultiplier: number; name: string }[],
+  },
+
+  npc: {
+    count: 8,
+    spawnPositions: [
+      { x: 120, y: 350 }, { x: 300, y: 350 }, { x: 180, y: 550 },
+      { x: 340, y: 700 }, { x: 100, y: 900 }, { x: 280, y: 1000 },
+      { x: 150, y: 1150 }, { x: 350, y: 1200 },
+    ],
+    personalities: ['serious', 'slacker', 'social', 'loner'] as const,
+    namePool: ['小王', '阿杰', '小美', '老张', '阿丽', '大刘', '小陈', '阿强'],
+    stateTimers: { idle: [2, 5], working: [5, 15], fishWorking: [3, 8], fakeWorking: [3, 6], chatting: [3, 8], pantryRelax: [4, 10], restroomBreak: [3, 6], walking: [1, 3], stunned: [2, 3] },
+    reactionSpeeds: { serious: 0.3, slacker: 0.8, social: 0.5, loner: 0.6 },
+    fishTendency: { serious: 0.1, slacker: 0.5, social: 0.3, loner: 0.2 },
+    socialTendency: { serious: 0.1, slacker: 0.3, social: 0.8, loner: 0.05 },
+    tints: { serious: 0xcccccc, slacker: 0x88ccff, social: 0xffcc88, loner: 0xaa99cc },
+    speed: 100,
+    separationRadius: 50,
+    separationForce: 30,
+    decisionIntervalMs: [1000, 3000],
+    bubbleTexts: {
+      friendly: ['老板刚过去', '快切屏！', '茶水间安全', '加油摸', '小心点'],
+      slacker: ['摸会儿鱼吧', '摸了摸了', '好困', '不想干活'],
+      warning: ['老板来了！', '快收手机！', '注意！', '老板在看你！'],
+      random: ['今天好累', '咖啡续命', '下班了吗', '摸鱼一时爽'],
+    },
+    crowdExposureReduction: 0.3,
+  },
+
+  feedback: {
+    screenShakeOnCatch: { duration: 400, intensity: 0.015 },
+    screenShakeOnWarning: { duration: 200, intensity: 0.005 },
+    redFlashOnCatch: { duration: 300 },
+    bossAngerPulse: { intervalMs: 500, scale: 0.05 },
+  },
 }
 
 export const BOSS_TRASH_TALK = [
@@ -43,6 +122,13 @@ export const BOSS_TRASH_TALK = [
   '公司给你工位是来表演葛优瘫的？',
   '你的摸鱼水平比工作水平高多了。',
   '好家伙，上班时间开茶话会呢？',
+] as const
+
+export const BOSS_NPC_TRASH_TALK = [
+  '你看看你，上班时间不干活！',
+  '全公司就你最闲是吧？',
+  '这个月的绩效你别想要了。',
+  '我刚才就看到你在玩手机。',
 ] as const
 
 export const RANK_TITLES = [
