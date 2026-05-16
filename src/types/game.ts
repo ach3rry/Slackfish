@@ -11,7 +11,7 @@ export type PlayerAction =
   | 'phone'
 
 /** 地图区域枚举 */
-export type Zone = 'workstation' | 'breakroom' | 'restroom' | 'bossOffice' | 'corridor'
+export type Zone = 'workstation' | 'breakroom' | 'restroom' | 'bossOffice' | 'corridor' | 'corridorBottom'
 
 /** 老板状态 */
 export type BossState = 'resting' | 'patrolling' | 'leaving'

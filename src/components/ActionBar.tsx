@@ -11,7 +11,7 @@ export function ActionBar() {
 
   if (phase !== 'playing') return null
 
-  const zones = level1Config.zones.filter(z => z.playerCanEnter)
+  const zones = level1Config.zones.filter(z => z.playerCanEnter && !z.id.startsWith('corridor'))
   const availableActions = level1Config.actions.filter(a => a.availableIn.includes(playerZone))
 
   const handleZoneClick = (zoneId: Zone) => {
@@ -34,7 +34,7 @@ export function ActionBar() {
   }
 
   const zoneIcons: Record<string, string> = {
-    workstation: '🏢',
+    workstation: '💻',
     breakroom: '☕',
     restroom: '🚻',
   }
@@ -63,7 +63,7 @@ export function ActionBar() {
                   opacity: playerStunned ? 0.4 : 1,
                 }}>
                 <span className="mr-0.5">{zoneIcons[zone.id]}</span>
-                {zone.label}
+                {zone.id === 'workstation' ? '工位' : zone.id === 'breakroom' ? '茶水间' : '卫生间'}
                 {zone.safeZone && <span className="absolute -top-1 -right-1 text-[10px]">🛡️</span>}
               </button>
             )

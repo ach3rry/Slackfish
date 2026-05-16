@@ -1,6 +1,22 @@
 import type { LevelConfig, RankConfig } from '../types/game'
 
-/** 第一关完整数值配置 */
+/**
+ * 地图布局（960 x 640，无缝铺满）
+ *
+ *   ┌──────────────────────────────────────────────┐
+ *   │            老板办公室 (960 x 100)             │
+ *   ├──────────────┬──────┬────────────────────────┤
+ *   │              │      │                        │
+ *   │   工位区     │ 走廊 │      茶水间            │
+ *   │  (440x340)  │(80)  │    (440 x 340)         │
+ *   │              │      │                        │
+ *   ├──────────────┴──────┼────────────────────────┤
+ *   │                     │                        │
+ *   │    走廊延伸          │       卫生间            │
+ *   │   (520 x 200)       │    (440 x 200)         │
+ *   │                     │                        │
+ *   └─────────────────────┴────────────────────────┘
+ */
 export const level1Config: LevelConfig = {
   initialSalary: 200,
   targetSlacking: 100,
@@ -15,14 +31,12 @@ export const level1Config: LevelConfig = {
   mapWidth: 960,
   mapHeight: 640,
 
-  // 被抓罚款
   caughtPenalty: {
     workstation: 10,
     breakroom: 20,
     notAtDesk: 5,
   },
 
-  // 老板吐槽文案池
   bossTaunts: [
     '我让你带薪学习，不是带薪刷视频。',
     '奶茶比 KPI 还重要是吧？',
@@ -36,7 +50,6 @@ export const level1Config: LevelConfig = {
     '好家伙，上班时间开茶话会呢？',
   ],
 
-  // 所有行为配置
   actions: [
     { id: 'idle', label: '待机', emoji: '😐', slackingPerSec: 0, salaryPerSec: 0, riskLevel: 'none', availableIn: ['workstation', 'breakroom', 'restroom'] },
     { id: 'working', label: '正常工作', emoji: '💻', slackingPerSec: 0, salaryPerSec: 2, riskLevel: 'none', availableIn: ['workstation'] },
@@ -48,79 +61,88 @@ export const level1Config: LevelConfig = {
     { id: 'phone', label: '刷手机', emoji: '📱', slackingPerSec: 5, salaryPerSec: 0, riskLevel: 'none', availableIn: ['restroom'] },
   ],
 
-  // 地图区域
   zones: [
     {
       id: 'bossOffice',
-      label: '老板办公室',
-      color: 0x8b0000,
-      borderColor: 0xff4444,
-      x: 350, y: 10,
-      width: 260, height: 120,
-      playerSpawn: { x: 480, y: 70 },
+      label: '👔 老板办公室',
+      color: 0x3d1a1a,
+      borderColor: 0xcc4444,
+      x: 0, y: 0,
+      width: 960, height: 100,
+      playerSpawn: { x: 480, y: 50 },
       safeZone: false,
       playerCanEnter: false,
     },
     {
       id: 'workstation',
-      label: '工位区',
-      color: 0x2a5a2a,
-      borderColor: 0x44aa44,
-      x: 20, y: 140,
-      width: 400, height: 280,
-      playerSpawn: { x: 220, y: 300 },
+      label: '💻 工位区',
+      color: 0x1e2d1e,
+      borderColor: 0x3fb950,
+      x: 0, y: 100,
+      width: 440, height: 340,
+      playerSpawn: { x: 220, y: 280 },
       safeZone: false,
-      playerCanEnter: true,
-    },
-    {
-      id: 'breakroom',
-      label: '茶水间',
-      color: 0x8b6914,
-      borderColor: 0xffaa44,
-      x: 560, y: 10,
-      width: 380, height: 250,
-      playerSpawn: { x: 750, y: 140 },
-      safeZone: false,
-      playerCanEnter: true,
-    },
-    {
-      id: 'restroom',
-      label: '卫生间',
-      color: 0x1a4a6a,
-      borderColor: 0x44aaff,
-      x: 560, y: 340,
-      width: 380, height: 290,
-      playerSpawn: { x: 750, y: 490 },
-      safeZone: true,
       playerCanEnter: true,
     },
     {
       id: 'corridor',
       label: '中央走廊',
-      color: 0x555555,
-      borderColor: 0x888888,
-      x: 420, y: 140,
-      width: 140, height: 490,
-      playerSpawn: { x: 490, y: 390 },
+      color: 0x21262d,
+      borderColor: 0x484f58,
+      x: 440, y: 100,
+      width: 80, height: 340,
+      playerSpawn: { x: 480, y: 270 },
       safeZone: false,
+      playerCanEnter: true,
+    },
+    {
+      id: 'breakroom',
+      label: '☕ 茶水间',
+      color: 0x2d2510,
+      borderColor: 0xd29922,
+      x: 520, y: 100,
+      width: 440, height: 340,
+      playerSpawn: { x: 740, y: 270 },
+      safeZone: false,
+      playerCanEnter: true,
+    },
+    {
+      id: 'corridorBottom',
+      label: '走廊',
+      color: 0x21262d,
+      borderColor: 0x484f58,
+      x: 0, y: 440,
+      width: 520, height: 200,
+      playerSpawn: { x: 260, y: 540 },
+      safeZone: false,
+      playerCanEnter: true,
+    },
+    {
+      id: 'restroom',
+      label: '🛡️ 卫生间',
+      color: 0x102030,
+      borderColor: 0x58a6ff,
+      x: 520, y: 440,
+      width: 440, height: 200,
+      playerSpawn: { x: 740, y: 540 },
+      safeZone: true,
       playerCanEnter: true,
     },
   ],
 
   // 老板巡查路线
   patrolRoute: [
-    { x: 480, y: 70, zone: 'bossOffice' },
-    { x: 480, y: 200, zone: 'corridor', waitTime: 1 },
-    { x: 220, y: 300, zone: 'workstation', waitTime: 2 },
-    { x: 220, y: 200, zone: 'workstation' },
-    { x: 480, y: 200, zone: 'corridor', waitTime: 0.5 },
-    { x: 750, y: 140, zone: 'breakroom', waitTime: 2 },
-    { x: 480, y: 200, zone: 'corridor', waitTime: 0.5 },
-    { x: 480, y: 70, zone: 'bossOffice' },
+    { x: 480, y: 50, zone: 'bossOffice' },
+    { x: 480, y: 180, zone: 'corridor', waitTime: 0.8 },
+    { x: 220, y: 280, zone: 'workstation', waitTime: 2.5 },
+    { x: 220, y: 180, zone: 'workstation' },
+    { x: 480, y: 180, zone: 'corridor', waitTime: 0.5 },
+    { x: 740, y: 270, zone: 'breakroom', waitTime: 2.5 },
+    { x: 480, y: 180, zone: 'corridor', waitTime: 0.5 },
+    { x: 480, y: 50, zone: 'bossOffice' },
   ],
 }
 
-/** 段位配置 */
 export const ranks: RankConfig[] = [
   { name: '摸鱼大师', minSlacking: 150, minSalary: 180 },
   { name: '办公室幽灵', minSlacking: 120, minSalary: 150 },
