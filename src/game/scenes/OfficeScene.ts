@@ -38,9 +38,16 @@ export class OfficeScene extends Phaser.Scene {
 
   constructor() { super('OfficeScene') }
 
+  preload() {
+    this.load.image('scene-bg', 'images2d/各场景总视图.png')
+    this.load.image('player-sprite', 'images2d/员工.png')
+    this.load.image('boss-sprite', 'images2d/老板.png')
+  }
+
   create() {
     this.cameras.main.setBackgroundColor(GAME_CONFIG.canvas.background)
-    this.drawMap(); this.createCharacters(); this.createOverlays()
+    this.add.image(540, 380, 'scene-bg').setDisplaySize(1080, 760).setDepth(0)
+    this.createCharacters(); this.createOverlays()
     this.registerCommands(); this.resetScene()
   }
 
@@ -53,88 +60,21 @@ export class OfficeScene extends Phaser.Scene {
     this.updateEconomy(ds); this.updateExposure(delta)
   }
 
-  private drawMap() {
-    const g = this.add.graphics()
-    g.fillStyle(0x171d28, 1); g.fillRoundedRect(18, 18, 1044, 724, 18)
-    g.lineStyle(4, 0x2f4058, 1); g.strokeRoundedRect(18, 18, 1044, 724, 18)
-    this.drawFloorPattern(g)
-    areaOrder.forEach(id => this.drawArea(g, LEVEL_AREAS[id]))
-    this.drawOfficeProps(g)
-    this.drawDoor(438, 198, 60, '⬇'); this.drawDoor(430, 410, 54, '➡')
-    this.drawDoor(650, 330, 54, '➡'); this.drawDoor(696, 552, 54, '↘')
-  }
-
-  private drawFloorPattern(g: Phaser.GameObjects.Graphics) {
-    g.lineStyle(1, 0x2b3442, 0.38)
-    for (let x = 46; x < GAME_CONFIG.canvas.width - 36; x += 42) g.lineBetween(x, 34, x, 724)
-    for (let y = 48; y < GAME_CONFIG.canvas.height - 34; y += 42) g.lineBetween(34, y, 1040, y)
-  }
-
-  private drawArea(g: Phaser.GameObjects.Graphics, area: AreaConfig) {
-    const { rect } = area
-    g.fillStyle(area.fill, area.id === 'corridor' ? 0.56 : 0.9)
-    g.fillRoundedRect(rect.x, rect.y, rect.width, rect.height, 10)
-    g.lineStyle(4, area.stroke, 0.92); g.strokeRoundedRect(rect.x, rect.y, rect.width, rect.height, 10)
-    const lc = area.safe ? '#86efac' : area.id === 'pantry' ? '#fdba74' : '#f8fafc'
-    this.add.text(rect.x + 18, rect.y + 16, area.label, { ...textStyle, fontSize: '30px', color: lc }).setDepth(2)
-    this.add.text(rect.x + 20, rect.y + 54, area.riskLabel, { ...textStyle, fontSize: '19px', color: area.safe ? '#bbf7d0' : area.id === 'pantry' ? '#fed7aa' : '#cbd5e1' }).setDepth(2)
-  }
-
-  private drawOfficeProps(g: Phaser.GameObjects.Graphics) {
-    this.drawWorkstations(g); this.drawPantry(g); this.drawRestroom(g); this.drawBossOffice(g)
-    this.add.text(504, 686, '中央走廊', { ...textStyle, fontSize: '24px', color: '#fca5a5' }).setOrigin(0.5).setDepth(2)
-  }
-
-  private drawWorkstations(g: Phaser.GameObjects.Graphics) {
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-      const x = 78 + c * 116; const y = 284 + r * 92
-      g.fillStyle(0xc59b6d, 1); g.fillRoundedRect(x, y, 86, 46, 6)
-      g.fillStyle(0x111827, 1); g.fillRoundedRect(x + 22, y + 6, 42, 18, 3)
-      g.fillStyle(0x334155, 1); g.fillRoundedRect(x + 8, y + 52, 48, 28, 6)
-      g.fillStyle(0x3f7f5f, 1); g.fillCircle(x + 74, y + 14, 6)
-    }
-  }
-
-  private drawPantry(g: Phaser.GameObjects.Graphics) {
-    g.fillStyle(0xf3c47e, 1); g.fillRoundedRect(742, 368, 160, 48, 22)
-    g.fillStyle(0x765039, 1); g.fillCircle(765, 424, 10); g.fillCircle(882, 424, 10)
-    g.fillStyle(0xdad7c8, 1); g.fillRoundedRect(724, 252, 72, 92, 8)
-    g.fillStyle(0x1f2937, 1); g.fillRoundedRect(826, 250, 136, 38, 6)
-    this.add.text(846, 255, '☕ 🧋 🍪', { fontSize: '25px' }).setDepth(3)
-  }
-
-  private drawRestroom(g: Phaser.GameObjects.Graphics) {
-    g.fillStyle(0xd5eef7, 1); g.fillRoundedRect(750, 548, 70, 90, 8); g.fillRoundedRect(872, 548, 70, 90, 8)
-    g.fillStyle(0x64748b, 1); g.fillRoundedRect(750, 632, 70, 10, 4); g.fillRoundedRect(872, 632, 70, 10, 4)
-    this.add.text(792, 520, '100% SAFE', { ...textStyle, fontSize: '22px', color: '#86efac' }).setDepth(3)
-  }
-
-  private drawBossOffice(g: Phaser.GameObjects.Graphics) {
-    g.fillStyle(0x8b5a32, 1); g.fillRoundedRect(352, 120, 190, 45, 8)
-    g.fillStyle(0x2b170f, 1); g.fillRoundedRect(326, 58, 92, 44, 6); g.fillRoundedRect(472, 58, 92, 44, 6)
-    this.add.text(346, 64, '📚📁', { fontSize: '24px' }).setDepth(3)
-    this.add.text(492, 64, '🏆📊', { fontSize: '24px' }).setDepth(3)
-  }
-
-  private drawDoor(x: number, y: number, size: number, label: string) {
-    this.add.rectangle(x, y, size, 18, 0x0f172a, 0.95).setStrokeStyle(2, 0xfacc15, 0.82).setDepth(3)
-    this.add.text(x, y - 24, label, { ...textStyle, fontSize: '26px', color: '#38bdf8' }).setOrigin(0.5).setDepth(4)
-  }
-
   private createCharacters() {
+    // 玩家角色 - 使用像素风精灵图
     this.player = this.add.container(PLAYER_SPAWN.x, PLAYER_SPAWN.y).setDepth(20)
-    const pb = this.add.circle(0, 0, 22, 0xf7d08a, 1).setStrokeStyle(4, 0x0f172a)
-    const ph = this.add.rectangle(0, -15, 36, 16, 0x111827, 1)
-    const ps = this.add.triangle(0, 22, -18, 8, 18, 8, 0, 38, 0x2563eb, 1)
-    const pl = this.add.text(0, 48, '你', { ...textStyle, fontSize: '22px', color: '#bbf7d0' }).setOrigin(0.5)
-    this.player.add([ps, pb, ph, pl])
+    const playerSprite = this.add.image(0, 0, 'player-sprite').setDisplaySize(44, 56).setDepth(1)
+    const pl = this.add.text(0, 40, '你', { ...textStyle, fontSize: '20px', color: '#bbf7d0' }).setOrigin(0.5).setDepth(2)
+    // 底部光圈
+    const playerShadow = this.add.ellipse(0, 24, 36, 12, 0x000000, 0.25).setDepth(0)
+    this.player.add([playerShadow, playerSprite, pl])
 
+    // 老板角色 - 使用像素风精灵图
     this.boss = this.add.container(BOSS_SPAWN.x, BOSS_SPAWN.y).setDepth(22)
-    const bb = this.add.circle(0, 0, 24, 0xffdfaa, 1).setStrokeStyle(4, 0x1f0f0f)
-    const bs = this.add.triangle(0, 25, -22, 6, 22, 6, 0, 42, 0x8f1d1d, 1)
-    const bw = this.add.rectangle(0, -8, 35, 6, 0x111111, 1)
-    const bl = this.add.text(0, 52, '老板', { ...textStyle, fontSize: '20px', color: '#fecaca' }).setOrigin(0.5)
-    this.boss.add([bs, bb, bw, bl])
+    const bossSprite = this.add.image(0, 0, 'boss-sprite').setDisplaySize(48, 60).setDepth(1)
+    const bl = this.add.text(0, 44, '老板', { ...textStyle, fontSize: '18px', color: '#fecaca' }).setOrigin(0.5).setDepth(2)
+    const bossShadow = this.add.ellipse(0, 26, 40, 14, 0x000000, 0.25).setDepth(0)
+    this.boss.add([bossShadow, bossSprite, bl])
   }
 
   private createOverlays() {
@@ -242,7 +182,9 @@ export class OfficeScene extends Phaser.Scene {
     const next = moveTowards({ x: this.boss.x, y: this.boss.y }, this.bossTarget, GAME_CONFIG.movement.bossSpeed * ds)
     this.boss.setPosition(next.point.x, next.point.y)
     this.bossFacing = Number.isFinite(next.angle) ? next.angle : this.bossFacing
-    this.boss.setRotation(this.bossFacing - Math.PI / 2)
+    // 精灵图旋转面向移动方向
+    const sprite = this.boss.getAt(1) as Phaser.GameObjects.Image
+    if (sprite) sprite.setRotation(this.bossFacing - Math.PI / 2)
     if (next.arrived) {
       this.bossRouteIndex += 1
       if (this.bossRouteIndex >= BOSS_ROUTE.length) this.finishPatrol()
@@ -251,7 +193,9 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private finishPatrol() {
-    this.boss.setPosition(BOSS_SPAWN.x, BOSS_SPAWN.y); this.boss.setRotation(0)
+    this.boss.setPosition(BOSS_SPAWN.x, BOSS_SPAWN.y)
+    const sprite = this.boss.getAt(1) as Phaser.GameObjects.Image
+    if (sprite) sprite.setRotation(0)
     this.bossTarget = null; this.exposureMs = 0
     useGameStore.getState().setBossStatus('resting')
     this.scheduleBossWarning(Phaser.Math.Between(GAME_CONFIG.timing.bossRestMinMs, GAME_CONFIG.timing.bossRestMaxMs))
