@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# 工位摸鱼：伪装局
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一款办公室题材 2D 俯视角潜行摸鱼小游戏。玩家需要在老板巡查和红色扇形视野下切换区域与行为，积累摸鱼收益，同时避免工资被扣到 0。
 
-Currently, two official plugins are available:
+## 技术栈
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Vite + React + TypeScript
+- Phaser 3：地图、角色移动、老板巡查、视野和抓捕
+- Zustand：游戏状态
+- Tailwind CSS：HUD、弹窗、按钮和排行榜 UI
 
-## React Compiler
+## 运行
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+本地开发地址默认是 `http://127.0.0.1:5173/` 或 Vite 输出的地址。
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 项目结构
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `src/game/config.ts`：第一关核心数值、时间、扣费、视野配置。
+- `src/data/level1.ts`：地图区域、行为收益、出生点、老板路线。
+- `src/game/vision.ts`：独立扇形视野判定。
+- `src/game/scenes/OfficeScene.ts`：Phaser 主场景。
+- `src/store/gameStore.ts`：Zustand 状态与经济/胜负逻辑。
+- `src/components/`：React HUD、操作栏、弹窗、开始页、新手引导、排行榜。
+- `src/utils/leaderboard.ts`：本地排行榜和摸鱼段位。
+
+## 已实现功能
+
+- 玩家点击地图或底部按钮移动到工位区、茶水间、卫生间。
+- 区域行为按钮按所在区域启用，移动、冷却、僵直期间不可操作。
+- 工位区可正常工作涨工资，也可看视频、吃薯片摸鱼。
+- 茶水间可喝奶茶、闲聊、假装办公，并显示“伪装中”。
+- 卫生间可刷手机，且为绝对安全区。
+- 老板开局 3 秒后出门巡查，之后 3-5 秒随机休息再巡查。
+- 老板红色半透明扇形视野跟随移动方向旋转。
+- 违规状态在视野内持续 1 秒会扣工资并触发弹窗、僵直和屏幕震动。
+- 工资为 0 失败，摸鱼收益达到 100 且工资大于 0 通关。
+- 通关称号、随机老板吐槽、本地最近 10 次排行榜、新手引导。
+
+## 可扩展方向
+
+- 多关卡地图与不同老板巡查路线。
+- 真实音效资源和角色帧动画。
+- 障碍物遮挡视野、门禁、同事 NPC。
+- 茶水间“伪装办公”概率减免或一次性免抓机制。
+- 移动端手势优化和竖屏 UI 版本。
