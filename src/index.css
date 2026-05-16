@@ -1,75 +1,18 @@
 @import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  background: #0d1117;
+  background: #0f1117;
   color: #e6edf3;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-#root {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
+#root { width: 100vw; height: 100vh; overflow: hidden; }
 
-/* Phaser 画布 */
-#game-container {
-  position: absolute;
-  inset: 0;
-}
+#game-container canvas { display: block; }
 
-#game-container canvas {
-  display: block;
-  border-radius: 6px;
-}
-
-/* 全局按钮样式 */
-button {
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-
-button:disabled {
-  cursor: not-allowed !important;
-}
-
-/* 脉冲动画 */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(255, 200, 0, 0.2); }
-  50% { box-shadow: 0 0 20px rgba(255, 200, 0, 0.5); }
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-3px); }
-  75% { transform: translateX(3px); }
-}
-
-.animate-shake {
-  animation: shake 0.3s ease-in-out;
-}
-
-/* 滚动条 */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: #0d1117;
-}
-::-webkit-scrollbar-thumb {
-  background: #30363d;
-  border-radius: 2px;
-}
+button { -webkit-tap-highlight-color: transparent; user-select: none; }
+button:disabled { cursor: not-allowed !important; }
