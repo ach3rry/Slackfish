@@ -7,66 +7,100 @@ export function StartPage() {
   const board = leaderboard()
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-[#0f0f23] via-[#1a1a3e] to-[#0f0f23] text-white">
-      {/* 标题区域 */}
-      <div className="text-center mb-8">
-        <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 mb-3 drop-shadow-lg tracking-wider">
-          工位摸鱼：伪装局
-        </h1>
-        <p className="text-lg text-gray-300">
-          在老板眼皮底下，快乐摸鱼！
-        </p>
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-auto"
+      style={{ background: 'linear-gradient(135deg, #0d1117 0%, #161b22 40%, #1a1025 100%)' }}>
+
+      {/* 背景装饰 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 left-10 text-6xl opacity-10">🏢</div>
+        <div className="absolute top-20 right-20 text-5xl opacity-10">👔</div>
+        <div className="absolute bottom-20 left-20 text-5xl opacity-10">🐟</div>
+        <div className="absolute bottom-10 right-10 text-6xl opacity-10">🎮</div>
+        <div className="absolute top-1/3 left-1/4 text-4xl opacity-5">💻</div>
+        <div className="absolute top-1/2 right-1/4 text-4xl opacity-5">🧋</div>
       </div>
 
-      {/* 游戏预览图 */}
-      <div className="w-[480px] h-[200px] rounded-xl border-2 border-yellow-500/30 bg-[#1a1a3e] flex items-center justify-center mb-8 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-4 left-6 text-4xl">🏢</div>
-          <div className="absolute top-8 right-10 text-3xl">👔</div>
-          <div className="absolute bottom-4 left-20 text-3xl">💻</div>
-          <div className="absolute bottom-6 right-16 text-3xl">🧋</div>
-          <div className="absolute top-16 left-1/2 text-4xl">🏃</div>
+      <div className="relative z-10 flex flex-col items-center max-w-lg w-full px-4">
+        {/* Logo 区域 */}
+        <div className="mb-6 text-center">
+          <div className="text-6xl mb-4 drop-shadow-lg">🐟</div>
+          <h1 className="text-4xl font-black tracking-wide mb-2"
+            style={{
+              background: 'linear-gradient(90deg, #f0883e, #da3633, #f0883e)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              filter: 'drop-shadow(0 2px 4px rgba(240, 136, 62, 0.3))',
+            }}>
+            工位摸鱼：伪装局
+          </h1>
+          <p className="text-sm text-gray-400 mt-1">
+            在老板眼皮底下，快乐摸鱼！
+          </p>
         </div>
-        <div className="z-10 text-center">
-          <p className="text-yellow-300 text-xl font-bold mb-1">🎮 办公室潜行摸鱼</p>
-          <p className="text-gray-400 text-sm">躲避老板视线 · 赚取摸鱼收益</p>
-        </div>
-      </div>
 
-      {/* 开始按钮 */}
-      <button
-        onClick={startGame}
-        className="px-12 py-4 text-2xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black rounded-2xl shadow-lg shadow-orange-500/30 transform hover:scale-105 transition-all duration-200 active:scale-95 mb-8"
-      >
-        🐟 开始摸鱼
-      </button>
-
-      {/* 玩法说明 */}
-      <div className="max-w-lg text-center space-y-2 text-gray-400 text-sm">
-        <p className="text-yellow-300 font-bold text-base mb-2">📖 玩法说明</p>
-        <p>🏢 点击底部区域按钮在不同办公区域间移动</p>
-        <p>🎯 选择摸鱼行为赚取摸鱼收益，收益达到 100 即通关</p>
-        <p>👀 躲避老板红色扇形视野，被抓会扣工资</p>
-        <p>🛡️ 卫生间是绝对安全区，茶水间收益高但风险大</p>
-        <p>💰 工资降到 0 就会被辞退，小心！</p>
-      </div>
-
-      {/* 排行榜 */}
-      {board.length > 0 && (
-        <div className="mt-6 w-80">
-          <p className="text-yellow-300 font-bold text-sm mb-2">🏆 最近记录</p>
-          <div className="space-y-1 text-xs text-gray-400">
-            {board.slice(0, 3).map((entry, i) => (
-              <div key={i} className="flex justify-between bg-white/5 rounded px-3 py-1">
-                <span>{entry.rank}</span>
-                <span>收益 {entry.slacking.toFixed(0)}</span>
-                <span>工资 {entry.salary}</span>
-                <span>{entry.date}</span>
-              </div>
-            ))}
+        {/* 产品图预览 */}
+        <div className="w-full rounded-xl overflow-hidden border border-gray-700/50 mb-6 shadow-xl shadow-black/50">
+          <img src="/images/overview.png" alt="办公室总览" className="w-full h-44 object-cover opacity-80" />
+          <div className="bg-black/60 backdrop-blur px-4 py-2 text-center">
+            <span className="text-yellow-400 text-sm font-bold">🎮 办公室潜行摸鱼 — 躲避老板视线</span>
           </div>
         </div>
-      )}
+
+        {/* 开始按钮 */}
+        <button
+          onClick={startGame}
+          className="w-full py-4 text-xl font-black rounded-xl shadow-lg transition-all duration-200 active:scale-95 mb-6 cursor-pointer"
+          style={{
+            background: 'linear-gradient(135deg, #f0883e, #da3633)',
+            color: '#fff',
+            boxShadow: '0 4px 24px rgba(240, 136, 62, 0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+          🐟 开始摸鱼
+        </button>
+
+        {/* 玩法说明卡片 */}
+        <div className="w-full rounded-xl p-4 mb-4"
+          style={{ background: 'rgba(22, 27, 34, 0.9)', border: '1px solid #30363d' }}>
+          <p className="text-yellow-400 font-bold text-sm mb-3 text-center">📖 玩法说明</p>
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
+            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+              <span className="text-lg">🏢</span>
+              <span>点击底部按钮<br/>在不同区域移动</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+              <span className="text-lg">🎯</span>
+              <span>选择摸鱼行为<br/>赚满100收益通关</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+              <span className="text-lg">👀</span>
+              <span>躲避红色扇形<br/>老板视野</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+              <span className="text-lg">🛡️</span>
+              <span>卫生间绝对安全<br/>茶水间高风险</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 排行榜 */}
+        {board.length > 0 && (
+          <div className="w-full rounded-xl p-4"
+            style={{ background: 'rgba(22, 27, 34, 0.9)', border: '1px solid #30363d' }}>
+            <p className="text-yellow-400 font-bold text-sm mb-2">🏆 最近记录</p>
+            <div className="space-y-1">
+              {board.slice(0, 5).map((entry, i) => (
+                <div key={i} className="flex justify-between items-center bg-white/5 rounded-lg px-3 py-1.5 text-xs">
+                  <span className="text-yellow-300">{entry.rank}</span>
+                  <span className="text-gray-400">收益 {entry.slacking.toFixed(0)}</span>
+                  <span className="text-gray-400">工资 {entry.salary}</span>
+                  <span className="text-gray-500">{entry.date}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

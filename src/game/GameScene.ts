@@ -1,19 +1,21 @@
 import Phaser from 'phaser'
 import { level1Config } from '../data/level1'
-import type { Zone, PlayerAction, ActionConfig } from '../types/game'
+import type { Zone, PlayerAction } from '../types/game'
 import { useGameStore } from '../store/gameStore'
 import { isInVisionCone, shouldPlayerBeCaught, angleBetween } from './vision'
 
 export class GameScene extends Phaser.Scene {
-  // 地图元素
-  private zoneRects: Map<string, Phaser.GameObjects.Rectangle> = new Map()
-  private zoneLabels: Map<string, Phaser.GameObjects.Text> = new Map()
+  // 区域图片
+  private zoneImages: Map<string, Phaser.GameObjects.Image> = new Map()
+  private zoneOverlays: Map<string, Phaser.GameObjects.Rectangle> = new Map()
+  private zoneLabels: Map<string, Phaser.GameObjects.Container> = new Map()
 
   // 玩家
   private player!: Phaser.GameObjects.Container
   private playerBody!: Phaser.GameObjects.Graphics
   private playerLabel!: Phaser.GameObjects.Text
   private playerActionIcon!: Phaser.GameObjects.Text
+  private playerShadow!: Phaser.GameObjects.Ellipse
   private targetPos: { x: number; y: number } | null = null
   private isMoving = false
 
@@ -21,6 +23,7 @@ export class GameScene extends Phaser.Scene {
   private boss!: Phaser.GameObjects.Container
   private bossBody!: Phaser.GameObjects.Graphics
   private bossLabel!: Phaser.GameObjects.Text
+  private bossShadow!: Phaser.GameObjects.Ellipse
   private bossVision!: Phaser.GameObjects.Graphics
   private bossAngle = Math.PI / 2
   private patrolIndex = 0
@@ -42,26 +45,32 @@ export class GameScene extends Phaser.Scene {
   private earningsAccumulator = 0
 
   // 老板出门提示
-  private bossDoorText!: Phaser.GameObjects.Text
   private bossDoorTimer = 0
 
-  // 区域装饰
-  private decorations: Phaser.GameObjects.GameObject[] = []
+  // 区域动画标记
+  private currentHighlightZone: string | null = null
 
   constructor() {
     super({ key: 'GameScene' })
   }
 
+  preload() {
+    // 加载产品图片
+    this.load.image('bg_workstation', '/images/workstation.png')
+    this.load.image('bg_breakroom', '/images/breakroom.png')
+    this.load.image('bg_restroom', '/images/restroom.png')
+    this.load.image('bg_bossOffice', '/images/bossOffice.png')
+    this.load.image('bg_overview', '/images/overview.png')
+    this.load.image('bg_employee', '/images/employee.png')
+  }
+
   create() {
-    const { mapWidth, mapHeight } = level1Config
-    this.cameras.main.setBackgroundColor('#1a1a2e')
+    this.cameras.main.setBackgroundColor('#0d1117')
 
     this.drawMap()
-    this.drawDecorations()
     this.createPlayer()
     this.createBoss()
     this.createAlertIndicator()
-    this.createBossDoorText()
 
     this.gameActive = true
     this.stunned = false
@@ -71,7 +80,6 @@ export class GameScene extends Phaser.Scene {
     this.bossRestTimer = level1Config.bossFirstDelay
     this.alertTime = 0
 
-    // 键盘输入
     if (this.input.keyboard) {
       this.input.keyboard.on('keydown-ESC', () => {
         this.targetPos = null
@@ -85,13 +93,10 @@ export class GameScene extends Phaser.Scene {
     const dt = delta / 1000
     const store = useGameStore.getState()
 
-    // 检查游戏结束
     if (store.phase !== 'playing') return
 
-    // 更新计时
     store.setElapsedTime((Date.now() - store.startTime) / 1000)
 
-    // 检查胜利/失败条件
     if (store.slacking >= level1Config.targetSlacking && store.salary > 0) {
       this.gameActive = false
       store.saveToLeaderboard()
@@ -104,7 +109,6 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    // 僵直恢复
     if (this.stunned) {
       this.stunTimer -= dt
       if (this.stunTimer <= 0) {
@@ -115,148 +119,147 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    // 玩家移动
     this.updatePlayerMovement(dt)
-
-    // 老板 AI
     this.updateBoss(dt)
-
-    // 更新老板面朝方向
     this.updateBossAngle(dt)
-
-    // 视野判定
     this.updateVisionCheck(dt)
-
-    // 收益计算
     this.updateEarnings(dt)
-
-    // 更新视野绘制
     this.drawBossVision()
-
-    // 更新角色表情
     this.updatePlayerIcon()
+    this.updateZoneHighlights()
   }
 
   // ==================== 地图绘制 ====================
 
   private drawMap() {
-    const { zones } = level1Config
+    const { zones, mapWidth, mapHeight } = level1Config
 
-    // 先画背景格子
+    // 深色背景
     const bg = this.add.graphics()
-    bg.fillStyle(0x1a1a2e, 1)
-    bg.fillRect(0, 0, level1Config.mapWidth, level1Config.mapHeight)
+    bg.fillStyle(0x0d1117, 1)
+    bg.fillRect(0, 0, mapWidth, mapHeight)
 
-    // 画网格
-    bg.lineStyle(1, 0x252545, 0.3)
-    for (let x = 0; x < level1Config.mapWidth; x += 40) {
-      bg.moveTo(x, 0)
-      bg.lineTo(x, level1Config.mapHeight)
+    // 地板纹理 - 灰色格子
+    bg.fillStyle(0x161b22, 0.8)
+    bg.fillRect(0, 0, mapWidth, mapHeight)
+    bg.lineStyle(1, 0x21262d, 0.5)
+    for (let x = 0; x < mapWidth; x += 32) {
+      bg.moveTo(x, 0).lineTo(x, mapHeight)
     }
-    for (let y = 0; y < level1Config.mapHeight; y += 40) {
-      bg.moveTo(0, y)
-      bg.lineTo(level1Config.mapWidth, y)
+    for (let y = 0; y < mapHeight; y += 32) {
+      bg.moveTo(0, y).lineTo(mapWidth, y)
     }
     bg.strokePath()
 
-    // 画各区域
+    // 各区域
+    const imageKeys: Record<string, string> = {
+      bossOffice: 'bg_bossOffice',
+      workstation: 'bg_workstation',
+      breakroom: 'bg_breakroom',
+      restroom: 'bg_restroom',
+    }
+
     for (const zone of zones) {
-      // 区域背景
-      const rect = this.add.rectangle(
-        zone.x + zone.width / 2,
-        zone.y + zone.height / 2,
-        zone.width - 4,
-        zone.height - 4,
-        zone.color,
-        0.6
-      )
-      rect.setStrokeStyle(2, zone.borderColor, 0.8)
+      const zx = zone.x
+      const zy = zone.y
+      const zw = zone.width
+      const zh = zone.height
+      const cx = zx + zw / 2
+      const cy = zy + zh / 2
 
-      this.zoneRects.set(zone.id, rect)
+      // 区域底色
+      const baseRect = this.add.rectangle(cx, cy, zw - 2, zh - 2, zone.color, 0.35)
 
-      // 区域标签
-      const label = this.add.text(
-        zone.x + zone.width / 2,
-        zone.y + 18,
-        zone.label,
-        {
-          fontSize: '14px',
-          fontFamily: 'Arial',
-          color: '#ffffff',
-          fontStyle: 'bold',
-          backgroundColor: `#${zone.borderColor.toString(16).padStart(6, '0')}88`,
-          padding: { x: 6, y: 2 },
-        }
-      ).setOrigin(0.5, 0.5).setDepth(5)
+      // 加载产品图片
+      const imgKey = imageKeys[zone.id]
+      if (imgKey && this.textures.exists(imgKey)) {
+        const img = this.add.image(cx, cy, imgKey)
+        img.setDisplaySize(zw - 4, zh - 4)
+        img.setAlpha(0.45)
+        img.setDepth(1)
+        this.zoneImages.set(zone.id, img)
+      }
 
-      this.zoneLabels.set(zone.id, label)
+      // 区域边框 - 发光效果
+      const border = this.add.rectangle(cx, cy, zw - 2, zh - 2)
+      border.setStrokeStyle(2, zone.borderColor, 0.7)
+      border.setFillStyle(0x000000, 0)
+      border.setDepth(2)
+
+      // 可交互区域的叠加层（用于高亮）
+      if (zone.playerCanEnter) {
+        const overlay = this.add.rectangle(cx, cy, zw - 4, zh - 4, 0x000000, 0)
+        overlay.setDepth(3)
+        this.zoneOverlays.set(zone.id, overlay)
+      }
+
+      // 区域标签容器
+      const labelContainer = this.add.container(cx, zy + 20).setDepth(6)
+
+      // 标签背景
+      const labelBg = this.add.rectangle(0, 0, 0, 0, 0x000000, 0.7)
+      const labelText = this.add.text(0, 0, zone.label, {
+        fontSize: '13px',
+        fontFamily: 'system-ui, Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+
+      // 根据区域类型添加额外标签
+      const padding = 10
+      const textWidth = labelText.width + padding * 2
+      const textHeight = labelText.height + padding
+      labelBg.setSize(textWidth + 4, textHeight + 4)
+      labelBg.setStrokeStyle(1, zone.borderColor, 0.6)
+
+      labelContainer.add([labelBg, labelText])
 
       // 安全区标识
       if (zone.safeZone) {
-        this.add.text(
-          zone.x + zone.width / 2,
-          zone.y + zone.height - 16,
-          '🛡️ 安全区',
-          { fontSize: '12px', color: '#44ff44', fontFamily: 'Arial' }
-        ).setOrigin(0.5).setDepth(5)
+        const safeTag = this.add.text(cx, zy + zh - 18, '🛡️ 安全区', {
+          fontSize: '11px', color: '#3fb950', fontFamily: 'system-ui, sans-serif', fontStyle: 'bold',
+          backgroundColor: '#0d111788', padding: { x: 4, y: 2 },
+        }).setOrigin(0.5).setDepth(6)
       }
 
-      // 危险区标识
+      // 高风险区标识
       if (zone.id === 'breakroom') {
-        this.add.text(
-          zone.x + zone.width / 2,
-          zone.y + zone.height - 16,
-          '⚠️ 高收益·高风险',
-          { fontSize: '12px', color: '#ffaa44', fontFamily: 'Arial' }
-        ).setOrigin(0.5).setDepth(5)
+        this.add.text(cx, zy + zh - 18, '⚠️ 高收益·高风险', {
+          fontSize: '11px', color: '#d29922', fontFamily: 'system-ui, sans-serif', fontStyle: 'bold',
+          backgroundColor: '#0d111788', padding: { x: 4, y: 2 },
+        }).setOrigin(0.5).setDepth(6)
+      }
+
+      // 禁入标识
+      if (!zone.playerCanEnter && zone.id === 'bossOffice') {
+        this.add.text(cx, zy + zh - 18, '🚫 禁入', {
+          fontSize: '11px', color: '#f85149', fontFamily: 'system-ui, sans-serif', fontStyle: 'bold',
+          backgroundColor: '#0d111788', padding: { x: 4, y: 2 },
+        }).setOrigin(0.5).setDepth(6)
       }
     }
+
+    // 走廊装饰
+    this.add.text(490, 250, '🪴', { fontSize: '20px' }).setOrigin(0.5).setDepth(4)
+    this.add.text(490, 400, '🪴', { fontSize: '20px' }).setOrigin(0.5).setDepth(4)
+    this.add.text(490, 550, '💧', { fontSize: '16px' }).setOrigin(0.5).setDepth(4)
   }
 
-  private drawDecorations() {
-    // 工位区 - 画几个小桌子
-    const wsZone = level1Config.zones.find(z => z.id === 'workstation')!
-    const deskPositions = [
-      { x: wsZone.x + 60, y: wsZone.y + 80 },
-      { x: wsZone.x + 160, y: wsZone.y + 80 },
-      { x: wsZone.x + 260, y: wsZone.y + 80 },
-      { x: wsZone.x + 60, y: wsZone.y + 180 },
-      { x: wsZone.x + 160, y: wsZone.y + 180 },
-      { x: wsZone.x + 260, y: wsZone.y + 180 },
-    ]
-    for (const pos of deskPositions) {
-      const desk = this.add.rectangle(pos.x, pos.y, 50, 30, 0x445566, 0.5)
-      desk.setStrokeStyle(1, 0x667788, 0.4)
-      // 椅子
-      this.add.rectangle(pos.x, pos.y + 25, 20, 15, 0x334455, 0.4)
-      // 小电脑图标
-      this.add.text(pos.x, pos.y, '🖥️', { fontSize: '16px' }).setOrigin(0.5)
+  private updateZoneHighlights() {
+    const store = useGameStore.getState()
+    const playerZone = store.playerZone
+
+    if (this.currentHighlightZone === playerZone) return
+    this.currentHighlightZone = playerZone
+
+    for (const [zoneId, overlay] of this.zoneOverlays) {
+      if (zoneId === playerZone) {
+        const zone = level1Config.zones.find(z => z.id === zoneId)
+        overlay.setFillStyle(zone!.borderColor, 0.08)
+      } else {
+        overlay.setFillStyle(0x000000, 0)
+      }
     }
-
-    // 茶水间 - 画设施
-    const brZone = level1Config.zones.find(z => z.id === 'breakroom')!
-    this.add.rectangle(brZone.x + 40, brZone.y + 80, 40, 30, 0x554422, 0.5).setStrokeStyle(1, 0x886644, 0.4)
-    this.add.text(brZone.x + 40, brZone.y + 80, '☕', { fontSize: '16px' }).setOrigin(0.5)
-    this.add.rectangle(brZone.x + 120, brZone.y + 80, 40, 30, 0x554422, 0.5).setStrokeStyle(1, 0x886644, 0.4)
-    this.add.text(brZone.x + 120, brZone.y + 80, '🧋', { fontSize: '16px' }).setOrigin(0.5)
-    this.add.rectangle(brZone.x + 200, brZone.y + 80, 50, 30, 0x554422, 0.5).setStrokeStyle(1, 0x886644, 0.4)
-    this.add.text(brZone.x + 200, brZone.y + 80, '🛋️', { fontSize: '16px' }).setOrigin(0.5)
-
-    // 卫生间 - 画设施
-    const rrZone = level1Config.zones.find(z => z.id === 'restroom')!
-    this.add.rectangle(rrZone.x + 60, rrZone.y + 80, 35, 30, 0x224466, 0.5).setStrokeStyle(1, 0x4488aa, 0.4)
-    this.add.text(rrZone.x + 60, rrZone.y + 80, '🚻', { fontSize: '16px' }).setOrigin(0.5)
-    this.add.rectangle(rrZone.x + 160, rrZone.y + 80, 40, 30, 0x224466, 0.5).setStrokeStyle(1, 0x4488aa, 0.4)
-    this.add.text(rrZone.x + 160, rrZone.y + 80, '🚿', { fontSize: '16px' }).setOrigin(0.5)
-    this.add.rectangle(rrZone.x + 280, rrZone.y + 80, 40, 30, 0x224466, 0.5).setStrokeStyle(1, 0x4488aa, 0.4)
-    this.add.text(rrZone.x + 280, rrZone.y + 80, '🪞', { fontSize: '16px' }).setOrigin(0.5)
-
-    // 老板办公室 - 画大桌子和椅子
-    const boZone = level1Config.zones.find(z => z.id === 'bossOffice')!
-    this.add.rectangle(boZone.x + 130, boZone.y + 65, 80, 40, 0x662222, 0.5).setStrokeStyle(1, 0xaa4444, 0.4)
-    this.add.text(boZone.x + 130, boZone.y + 65, '👔', { fontSize: '18px' }).setOrigin(0.5)
-    this.add.rectangle(boZone.x + 220, boZone.y + 65, 30, 30, 0x553333, 0.4)
-    this.add.text(boZone.x + 220, boZone.y + 65, '🏆', { fontSize: '14px' }).setOrigin(0.5)
   }
 
   // ==================== 玩家 ====================
@@ -264,38 +267,48 @@ export class GameScene extends Phaser.Scene {
   private createPlayer() {
     const spawnZone = level1Config.zones.find(z => z.id === 'workstation')!
 
+    // 阴影
+    this.playerShadow = this.add.ellipse(0, 4, 24, 10, 0x000000, 0.3).setDepth(14)
+
     this.playerBody = this.add.graphics()
     this.drawPlayerBody(0x4488ff)
 
-    this.playerLabel = this.add.text(0, -20, '我', {
-      fontSize: '10px', color: '#ffffff', fontFamily: 'Arial', fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(10)
+    this.playerLabel = this.add.text(0, -24, '我', {
+      fontSize: '10px', color: '#ffffff', fontFamily: 'system-ui, sans-serif', fontStyle: 'bold',
+      backgroundColor: '#3366cc88', padding: { x: 3, y: 1 },
+    }).setOrigin(0.5).setDepth(16)
 
-    this.playerActionIcon = this.add.text(0, -32, '😐', {
-      fontSize: '12px',
-    }).setOrigin(0.5).setDepth(10)
+    this.playerActionIcon = this.add.text(0, -38, '😐', {
+      fontSize: '14px',
+    }).setOrigin(0.5).setDepth(16)
 
     this.player = this.add.container(spawnZone.playerSpawn.x, spawnZone.playerSpawn.y)
-    this.player.add([this.playerBody, this.playerLabel, this.playerActionIcon])
+    this.player.add([this.playerShadow, this.playerBody, this.playerLabel, this.playerActionIcon])
     this.player.setDepth(15)
     this.player.setSize(24, 24)
   }
 
   private drawPlayerBody(color: number) {
     this.playerBody.clear()
+    // 白衬衫身体
+    this.playerBody.fillStyle(0xffffff, 0.95)
+    this.playerBody.fillCircle(0, 0, 13)
+    // 蓝色领带/标记
     this.playerBody.fillStyle(color, 0.9)
-    this.playerBody.fillCircle(0, 0, 14)
-    this.playerBody.lineStyle(2, 0xffffff, 0.8)
+    this.playerBody.fillCircle(0, 2, 4)
+    // 外圈光环
+    this.playerBody.lineStyle(2, color, 0.6)
     this.playerBody.strokeCircle(0, 0, 14)
-    // 小帽子效果
-    this.playerBody.fillStyle(0x3366cc, 1)
-    this.playerBody.fillRect(-8, -14, 16, 4)
+    // 头发（黑色圆弧）
+    this.playerBody.fillStyle(0x222222, 1)
+    this.playerBody.slice(0, -2, 8, -Math.PI, 0, false)
+    this.playerBody.fillPath()
   }
 
   private updatePlayerMovement(dt: number) {
     if (!this.targetPos || !this.isMoving) return
 
-    const speed = 150 // 像素/秒
+    const speed = 180
     const dx = this.targetPos.x - this.player.x
     const dy = this.targetPos.y - this.player.y
     const dist = Math.sqrt(dx * dx + dy * dy)
@@ -313,7 +326,9 @@ export class GameScene extends Phaser.Scene {
     this.player.x += moveX
     this.player.y += moveY
 
-    // 更新所在区域
+    // 移动时微弹跳
+    this.playerShadow.setScale(1 + Math.sin(Date.now() / 80) * 0.1, 1)
+
     const currentZone = this.getPlayerZone(this.player.x, this.player.y)
     if (currentZone) {
       useGameStore.getState().setPlayerZone(currentZone)
@@ -330,7 +345,6 @@ export class GameScene extends Phaser.Scene {
     return null
   }
 
-  /** 供外部 React 调用：移动玩家到指定区域 */
   movePlayerToZone(zoneId: Zone) {
     if (this.stunned || this.isMoving) return
     const zone = level1Config.zones.find(z => z.id === zoneId)
@@ -342,30 +356,21 @@ export class GameScene extends Phaser.Scene {
     useGameStore.getState().setPlayerZone(zoneId)
   }
 
-  /** 供外部 React 调用：设置行为 */
   setPlayerAction(action: PlayerAction) {
     if (this.stunned || this.isMoving) return
     const store = useGameStore.getState()
     if (!store.canAct()) return
-
     store.setPlayerAction(action)
     store.setLastActionTime(Date.now())
   }
 
   private updatePlayerIcon() {
     const store = useGameStore.getState()
-    const actionIcons: Record<string, string> = {
-      idle: '😐',
-      moving: '🏃',
-      working: '💻',
-      watching: '📺',
-      chips: '🍟',
-      milkTea: '🧋',
-      chatting: '💬',
-      fakeWorking: '🖥️',
-      phone: '📱',
+    const icons: Record<string, string> = {
+      idle: '😐', moving: '🏃', working: '💻', watching: '📺',
+      chips: '🍟', milkTea: '🧋', chatting: '💬', fakeWorking: '🖥️', phone: '📱',
     }
-    this.playerActionIcon.setText(actionIcons[store.playerAction] || '😐')
+    this.playerActionIcon.setText(icons[store.playerAction] || '😐')
   }
 
   // ==================== 老板 ====================
@@ -374,60 +379,56 @@ export class GameScene extends Phaser.Scene {
     this.bossBody = this.add.graphics()
     this.drawBossBody()
 
-    this.bossLabel = this.add.text(0, -20, '老板', {
-      fontSize: '10px', color: '#ff4444', fontFamily: 'Arial', fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(10)
+    this.bossShadow = this.add.ellipse(0, 4, 26, 12, 0x000000, 0.4).setDepth(11)
+
+    this.bossLabel = this.add.text(0, -24, '老板', {
+      fontSize: '10px', color: '#ff6666', fontFamily: 'system-ui, sans-serif', fontStyle: 'bold',
+      backgroundColor: '#cc000088', padding: { x: 3, y: 1 },
+    }).setOrigin(0.5).setDepth(14)
 
     this.bossVision = this.add.graphics().setDepth(8)
 
     const boZone = level1Config.zones.find(z => z.id === 'bossOffice')!
     this.boss = this.add.container(boZone.playerSpawn.x, boZone.playerSpawn.y)
-    this.boss.add([this.bossVision, this.bossBody, this.bossLabel])
+    this.boss.add([this.bossShadow, this.bossVision, this.bossBody, this.bossLabel])
     this.boss.setDepth(12)
     this.boss.setSize(24, 24)
   }
 
   private drawBossBody() {
     this.bossBody.clear()
-    this.bossBody.fillStyle(0xff2222, 0.9)
-    this.bossBody.fillCircle(0, 0, 16)
-    this.bossBody.lineStyle(2, 0xffaaaa, 0.8)
-    this.bossBody.strokeCircle(0, 0, 16)
-    // 领带效果
+    // 黑西装身体
+    this.bossBody.fillStyle(0x1a1a1a, 0.95)
+    this.bossBody.fillCircle(0, 0, 15)
+    // 红色领带
     this.bossBody.fillStyle(0xcc0000, 1)
-    this.bossBody.fillTriangle(-3, 0, 3, 0, 0, 12)
-    // 愤怒的眉毛
-    this.bossBody.lineStyle(2, 0x000000, 1)
-    this.bossBody.beginPath()
-    this.bossBody.moveTo(-8, -8)
-    this.bossBody.lineTo(-3, -5)
-    this.bossBody.strokePath()
-    this.bossBody.beginPath()
-    this.bossBody.moveTo(8, -8)
-    this.bossBody.lineTo(3, -5)
-    this.bossBody.strokePath()
+    this.bossBody.fillTriangle(-3, -1, 3, -1, 0, 10)
+    // 红色外圈（危险光环）
+    this.bossBody.lineStyle(2, 0xff4444, 0.5)
+    this.bossBody.strokeCircle(0, 0, 17)
+    // 愤怒表情
+    this.bossBody.fillStyle(0xffcc00, 1)
+    this.bossBody.fillCircle(-5, -4, 2)
+    this.bossBody.fillCircle(5, -4, 2)
+    // 头发
+    this.bossBody.fillStyle(0x333333, 1)
+    this.bossBody.slice(0, -3, 9, -Math.PI, 0, false)
+    this.bossBody.fillPath()
   }
 
   private updateBoss(dt: number) {
     const store = useGameStore.getState()
 
     if (!this.isPatrolling) {
-      // 休息状态
       this.bossRestTimer -= dt
       if (this.bossRestTimer <= 0) {
-        // 开始巡逻
         this.isPatrolling = true
         this.patrolIndex = 0
         store.setBossState('patrolling')
-
-        // 显示出门警告
-        if (!this.firstPatrolDone || true) {
-          store.setBossLeaving(true)
-          this.bossDoorTimer = 1.5
-          this.firstPatrolDone = true
-        }
+        store.setBossLeaving(true)
+        this.bossDoorTimer = 1.5
+        this.firstPatrolDone = true
       } else {
-        // 即将出门提示
         if (this.bossRestTimer < 1.5 && !store.bossLeaving) {
           store.setBossLeaving(true)
           this.bossDoorTimer = 1.5
@@ -436,7 +437,6 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // 出门警告倒计时
     if (store.bossLeaving && this.bossDoorTimer > 0) {
       this.bossDoorTimer -= dt
       if (this.bossDoorTimer <= 0) {
@@ -445,7 +445,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.isPatrolling) {
-      // 巡逻中
       this.updatePatrol(dt)
     }
   }
@@ -453,11 +452,9 @@ export class GameScene extends Phaser.Scene {
   private updatePatrol(dt: number) {
     const route = level1Config.patrolRoute
     if (this.patrolIndex >= route.length) {
-      // 巡逻结束
       this.isPatrolling = false
       const store = useGameStore.getState()
       store.setBossState('resting')
-      // 随机等待 3-5 秒
       this.bossRestTimer = level1Config.bossPatrolCooldownMin +
         Math.random() * (level1Config.bossPatrolCooldownMax - level1Config.bossPatrolCooldownMin)
       return
@@ -469,31 +466,25 @@ export class GameScene extends Phaser.Scene {
     const dist = Math.sqrt(dx * dx + dy * dy)
 
     if (dist < 5) {
-      // 到达路径点
       if (waypoint.waitTime && waypoint.waitTime > 0) {
-        if (this.bossWaitTime <= 0) {
-          this.bossWaitTime = waypoint.waitTime
-        }
+        if (this.bossWaitTime <= 0) this.bossWaitTime = waypoint.waitTime
         this.bossWaitTime -= dt
         if (this.bossWaitTime > 0) return
       }
       this.bossWaitTime = 0
       this.patrolIndex++
     } else {
-      const speed = 80
-      const mx = (dx / dist) * speed * dt
-      const my = (dy / dist) * speed * dt
-      this.boss.x += mx
-      this.boss.y += my
+      const speed = 85
+      this.boss.x += (dx / dist) * speed * dt
+      this.boss.y += (dy / dist) * speed * dt
     }
   }
 
   private updateBossAngle(_dt: number) {
     if (this.isPatrolling && this.patrolIndex < level1Config.patrolRoute.length) {
-      const waypoint = level1Config.patrolRoute[this.patrolIndex]
-      this.bossAngle = angleBetween(this.boss.x, this.boss.y, waypoint.x, waypoint.y)
+      const wp = level1Config.patrolRoute[this.patrolIndex]
+      this.bossAngle = angleBetween(this.boss.x, this.boss.y, wp.x, wp.y)
     } else {
-      // 休息时朝下看
       this.bossAngle = Math.PI / 2
     }
   }
@@ -502,45 +493,36 @@ export class GameScene extends Phaser.Scene {
     this.bossVision.clear()
 
     const store = useGameStore.getState()
-    if (store.bossState === 'resting' && !this.isPatrolling) {
-      return
-    }
+    if (store.bossState === 'resting' && !this.isPatrolling) return
 
     const { bossVisionAngle, bossVisionDistance } = level1Config
     const halfAngle = (bossVisionAngle / 2) * (Math.PI / 180)
+    const segments = 24
 
-    // 画扇形
-    this.bossVision.fillStyle(0xff0000, 0.15)
+    // 渐变扇形 - 从内到外逐渐透明
+    this.bossVision.fillStyle(0xff0000, 0.18)
     this.bossVision.beginPath()
     this.bossVision.moveTo(0, 0)
-
-    const segments = 20
     for (let i = 0; i <= segments; i++) {
       const angle = this.bossAngle - halfAngle + (i / segments) * halfAngle * 2
-      const x = Math.cos(angle) * bossVisionDistance
-      const y = Math.sin(angle) * bossVisionDistance
-      if (i === 0) {
-        this.bossVision.lineTo(x, y)
-      } else {
-        this.bossVision.lineTo(x, y)
-      }
+      this.bossVision.lineTo(
+        Math.cos(angle) * bossVisionDistance,
+        Math.sin(angle) * bossVisionDistance
+      )
     }
-
     this.bossVision.lineTo(0, 0)
     this.bossVision.fillPath()
 
-    // 扇形边框
-    this.bossVision.lineStyle(1, 0xff0000, 0.3)
+    // 扇形边线
+    this.bossVision.lineStyle(1.5, 0xff4444, 0.35)
     this.bossVision.beginPath()
     this.bossVision.moveTo(0, 0)
-    const startX = Math.cos(this.bossAngle - halfAngle) * bossVisionDistance
-    const startY = Math.sin(this.bossAngle - halfAngle) * bossVisionDistance
-    this.bossVision.lineTo(startX, startY)
-    for (let i = 1; i <= segments; i++) {
+    for (let i = 0; i <= segments; i++) {
       const angle = this.bossAngle - halfAngle + (i / segments) * halfAngle * 2
-      const x = Math.cos(angle) * bossVisionDistance
-      const y = Math.sin(angle) * bossVisionDistance
-      this.bossVision.lineTo(x, y)
+      this.bossVision.lineTo(
+        Math.cos(angle) * bossVisionDistance,
+        Math.sin(angle) * bossVisionDistance
+      )
     }
     this.bossVision.lineTo(0, 0)
     this.bossVision.strokePath()
@@ -556,7 +538,6 @@ export class GameScene extends Phaser.Scene {
     const store = useGameStore.getState()
     const playerAction = store.playerAction
 
-    // 判断是否在视野内且在做违规行为
     const slackingActions: PlayerAction[] = ['watching', 'chips', 'milkTea', 'chatting', 'fakeWorking', 'phone']
     const isSlacking = slackingActions.includes(playerAction)
     const notAtDesk = store.playerZone !== 'workstation'
@@ -564,20 +545,16 @@ export class GameScene extends Phaser.Scene {
     const inVision = isInVisionCone(
       this.boss.x, this.boss.y, this.bossAngle,
       this.player.x, this.player.y,
-      level1Config.bossVisionAngle,
-      level1Config.bossVisionDistance
+      level1Config.bossVisionAngle, level1Config.bossVisionDistance
     )
 
     const shouldCatch = shouldPlayerBeCaught(
       this.boss.x, this.boss.y, this.bossAngle,
       this.player.x, this.player.y,
-      store.playerZone,
-      playerAction === 'working',
-      level1Config.bossVisionAngle,
-      level1Config.bossVisionDistance
+      store.playerZone, playerAction === 'working',
+      level1Config.bossVisionAngle, level1Config.bossVisionDistance
     )
 
-    // 老板不在巡逻时不算
     if (!this.isPatrolling) {
       this.alertTime = 0
       store.setBossAlert(0)
@@ -589,13 +566,17 @@ export class GameScene extends Phaser.Scene {
       this.alertTime += dt
       store.setBossAlert(this.alertTime / level1Config.bossVisionAlertTime)
 
-      // 画警告指示器
       this.alertGraphic.clear()
       const alertLevel = Math.min(1, this.alertTime / level1Config.bossVisionAlertTime)
-      this.alertGraphic.fillStyle(0xff0000, alertLevel * 0.5)
-      this.alertGraphic.fillCircle(this.player.x, this.player.y, 20 + alertLevel * 10)
-      this.alertGraphic.lineStyle(2, 0xff0000, alertLevel)
-      this.alertGraphic.strokeCircle(this.player.x, this.player.y, 20 + alertLevel * 10)
+      // 外圈脉冲
+      const pulse = 1 + Math.sin(Date.now() / 100) * 0.2
+      this.alertGraphic.fillStyle(0xff0000, alertLevel * 0.4)
+      this.alertGraphic.fillCircle(this.player.x, this.player.y, (22 + alertLevel * 12) * pulse)
+      this.alertGraphic.lineStyle(2, 0xff4444, alertLevel * 0.8)
+      this.alertGraphic.strokeCircle(this.player.x, this.player.y, (22 + alertLevel * 12) * pulse)
+      // 内圈
+      this.alertGraphic.lineStyle(3, 0xff0000, alertLevel)
+      this.alertGraphic.strokeCircle(this.player.x, this.player.y, 16)
 
       if (this.alertTime >= level1Config.bossVisionAlertTime) {
         this.triggerCaught()
@@ -605,11 +586,11 @@ export class GameScene extends Phaser.Scene {
       store.setBossAlert(this.alertTime / level1Config.bossVisionAlertTime)
       this.alertGraphic.clear()
 
-      // 在视野但安全时画黄色指示
       if (inVision && playerAction === 'working') {
-        this.alertGraphic.clear()
-        this.alertGraphic.fillStyle(0xffff00, 0.2)
+        this.alertGraphic.fillStyle(0x3fb950, 0.15)
         this.alertGraphic.fillCircle(this.player.x, this.player.y, 18)
+        this.alertGraphic.lineStyle(1, 0x3fb950, 0.3)
+        this.alertGraphic.strokeCircle(this.player.x, this.player.y, 18)
       }
     }
   }
@@ -621,26 +602,17 @@ export class GameScene extends Phaser.Scene {
     let penalty = 0
     const slackingActions: PlayerAction[] = ['watching', 'chips', 'milkTea', 'chatting', 'fakeWorking', 'phone']
     if (slackingActions.includes(store.playerAction)) {
-      if (zone === 'workstation') {
-        penalty = level1Config.caughtPenalty.workstation
-      } else if (zone === 'breakroom') {
-        penalty = level1Config.caughtPenalty.breakroom
-      }
+      if (zone === 'workstation') penalty = level1Config.caughtPenalty.workstation
+      else if (zone === 'breakroom') penalty = level1Config.caughtPenalty.breakroom
     } else {
       penalty = level1Config.caughtPenalty.notAtDesk
     }
 
-    // 随机吐槽文案
     const taunt = level1Config.bossTaunts[Math.floor(Math.random() * level1Config.bossTaunts.length)]
 
     store.deductSalary(penalty)
-    store.setCaughtEvent({
-      penalty,
-      taunt,
-      timestamp: Date.now(),
-    })
+    store.setCaughtEvent({ penalty, taunt, timestamp: Date.now() })
 
-    // 僵直
     this.stunned = true
     this.stunTimer = level1Config.caughtStunTime
     store.setPlayerStunned(true)
@@ -649,12 +621,11 @@ export class GameScene extends Phaser.Scene {
     this.targetPos = null
     this.alertTime = 0
 
-    // 屏幕抖动
-    this.cameras.main.shake(300, 0.01)
+    this.cameras.main.shake(300, 0.015)
 
-    // 玩家闪红
+    // 闪红
     this.drawPlayerBody(0xff2222)
-    this.time.delayedCall(500, () => {
+    this.time.delayedCall(600, () => {
       if (this.gameActive) this.drawPlayerBody(0x4488ff)
     })
   }
@@ -666,46 +637,17 @@ export class GameScene extends Phaser.Scene {
     if (store.playerAction === 'idle' || store.playerAction === 'moving') return
 
     const action = level1Config.actions.find(a => a.id === store.playerAction)
-    if (!action) return
-
-    // 检查行为是否在当前区域可用
-    if (!action.availableIn.includes(store.playerZone)) return
+    if (!action || !action.availableIn.includes(store.playerZone)) return
 
     this.earningsAccumulator += dt
-
-    // 每 0.1 秒更新一次，平滑增长
     if (this.earningsAccumulator >= 0.1) {
       const fraction = this.earningsAccumulator
       this.earningsAccumulator = 0
-
-      if (action.slackingPerSec > 0) {
-        store.addSlacking(action.slackingPerSec * fraction)
-      }
-      if (action.salaryPerSec > 0) {
-        store.addSalary(action.salaryPerSec * fraction)
-      }
+      if (action.slackingPerSec > 0) store.addSlacking(action.slackingPerSec * fraction)
+      if (action.salaryPerSec > 0) store.addSalary(action.salaryPerSec * fraction)
     }
   }
 
-  // ==================== 老板出门提示 ====================
-
-  private createBossDoorText() {
-    this.bossDoorText = this.add.text(
-      level1Config.mapWidth / 2,
-      60,
-      '',
-      {
-        fontSize: '20px',
-        color: '#ff4444',
-        fontFamily: 'Arial',
-        fontStyle: 'bold',
-        backgroundColor: '#000000cc',
-        padding: { x: 12, y: 6 },
-      }
-    ).setOrigin(0.5).setDepth(50).setAlpha(0)
-  }
-
-  /** 清理资源 */
   cleanup() {
     this.gameActive = false
   }
