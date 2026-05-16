@@ -13,6 +13,8 @@ export type PlayerAction =
 
 export type BossStatus = 'resting' | 'warning' | 'patrolling'
 
+export type BossBehavior = 'resting' | 'warning' | 'opening' | 'patrolling' | 'scanning'
+
 export type GamePhase = 'start' | 'playing' | 'won' | 'lost'
 
 export type RiskLevel = 'none' | 'zero' | 'veryLow' | 'low' | 'medium' | 'high' | 'extreme'

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { BOSS_TRASH_TALK, GAME_CONFIG } from '../game/config'
 import { LEVEL_ACTIONS } from '../data/level1'
 import { getRankTitle, loadLeaderboard, saveLeaderboardEntry } from '../utils/leaderboard'
-import type { AreaId, BossStatus, CatchNotice, GamePhase, LeaderboardEntry, PlayerAction } from '../types/game'
+import type { AreaId, BossBehavior, BossStatus, CatchNotice, GamePhase, LeaderboardEntry, PlayerAction } from '../types/game'
 
 type FlashTone = 'gain' | 'loss' | null
 
@@ -14,6 +14,7 @@ type GameState = {
   currentArea: AreaId
   currentAction: PlayerAction
   bossStatus: BossStatus
+  bossBehavior: BossBehavior
   threatText: string
   cooldownUntil: number
   stunnedUntil: number
@@ -22,11 +23,18 @@ type GameState = {
   guideOpen: boolean
   leaderboard: LeaderboardEntry[]
   finalTitle: string
+  fakeWorkStartMs: number
+  fakeWorkCooldownUntil: number
+  restroomEntries: number
+  restroomEntryStartMs: number
+  restroomPhoneTotalMs: number
+  restroomLastWarningMs: number
   startGame: () => void
   restartGame: () => void
   setArea: (area: AreaId) => void
   setAction: (action: PlayerAction, force?: boolean) => boolean
   setBossStatus: (status: BossStatus) => void
+  setBossBehavior: (behavior: BossBehavior) => void
   setThreatText: (text: string) => void
   setStunnedUntil: (timestamp: number) => void
   tickEconomy: (deltaSeconds: number) => { fishGain: number; salaryGain: number }
@@ -44,16 +52,32 @@ const randomTrashTalk = () => BOSS_TRASH_TALK[Math.floor(Math.random() * BOSS_TR
 const initialState = () => ({
   phase: 'start' as GamePhase, salary: GAME_CONFIG.economy.initialSalary, fish: 0,
   elapsedSeconds: 0, currentArea: 'workstation' as AreaId, currentAction: 'idle' as PlayerAction,
-  bossStatus: 'resting' as BossStatus, threatText: '老板休息中', cooldownUntil: 0, stunnedUntil: 0,
+  bossStatus: 'resting' as BossStatus, bossBehavior: 'resting' as BossBehavior,
+  threatText: '老板休息中', cooldownUntil: 0, stunnedUntil: 0,
   catchNotice: null, salaryFlash: null as FlashTone, guideOpen: !hasSeenGuide(),
   leaderboard: loadLeaderboard(), finalTitle: '',
+  fakeWorkStartMs: 0, fakeWorkCooldownUntil: 0,
+  restroomEntries: 0, restroomEntryStartMs: 0, restroomPhoneTotalMs: 0, restroomLastWarningMs: 0,
 })
 
 export const useGameStore = create<GameState>((set, get) => ({
   ...initialState(),
   startGame: () => set({ ...initialState(), phase: 'playing', guideOpen: !hasSeenGuide() }),
   restartGame: () => set({ ...initialState(), phase: 'playing', guideOpen: false }),
-  setArea: (area) => set({ currentArea: area }),
+  setArea: (area) => {
+    const prev = get().currentArea
+    if (area === 'restroom' && prev !== 'restroom') {
+      const state = get()
+      if (state.restroomEntries >= GAME_CONFIG.limits.restroomMaxEntries) return
+      set({ currentArea: area, restroomEntryStartMs: now(), restroomLastWarningMs: 0 })
+      return
+    }
+    if (prev === 'restroom' && area !== 'restroom') {
+      set({ currentArea: area, restroomEntryStartMs: 0 })
+      return
+    }
+    set({ currentArea: area })
+  },
   setAction: (action, force = false) => {
     const state = get()
     const timestamp = now()
@@ -61,11 +85,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (state.phase !== 'playing') return false
       if (timestamp < state.cooldownUntil || timestamp < state.stunnedUntil) return false
       if (state.currentAction === 'moving') return false
+      if (action === 'fakeWorking' && timestamp < state.fakeWorkCooldownUntil) return false
     }
-    set({ currentAction: action, cooldownUntil: force || action === 'moving' ? state.cooldownUntil : timestamp + GAME_CONFIG.timing.actionCooldownMs })
+    const updates: Partial<GameState> = {
+      currentAction: action,
+      cooldownUntil: force || action === 'moving' ? state.cooldownUntil : timestamp + GAME_CONFIG.timing.actionCooldownMs,
+    }
+    if (action === 'fakeWorking') updates.fakeWorkStartMs = timestamp
+    if (action === 'idle' && state.currentAction === 'fakeWorking') {
+      updates.fakeWorkCooldownUntil = timestamp + GAME_CONFIG.limits.fakeWorkCooldownMs
+    }
+    set(updates)
     return true
   },
   setBossStatus: (status) => set({ bossStatus: status, threatText: status === 'resting' ? '休息中' : status === 'warning' ? '即将出门' : '巡查中' }),
+  setBossBehavior: (behavior) => set({ bossBehavior: behavior }),
   setThreatText: (text) => set({ threatText: text }),
   setStunnedUntil: (timestamp) => set({ stunnedUntil: timestamp }),
   tickEconomy: (deltaSeconds) => {
@@ -79,6 +113,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!action) { set((c) => ({ elapsedSeconds: c.elapsedSeconds + deltaSeconds })); return { fishGain: 0, salaryGain: 0 } }
     const fishGain = action.fishPerSecond * deltaSeconds
     const salaryGain = action.salaryPerSecond * deltaSeconds
+    // Track restroom phone time
+    const phoneExtra = state.currentAction === 'phone' ? { restroomPhoneTotalMs: state.restroomPhoneTotalMs + deltaSeconds * 1000 } : {}
+    // Track restroom entries
+    const entryExtra = (state.currentArea === 'restroom' && state.restroomEntryStartMs > 0 && state.restroomEntries === 0)
+      ? { restroomEntries: 1, restroomEntryStartMs: now() }
+      : {}
     set((current) => {
       const nextFish = Math.min(GAME_CONFIG.economy.targetFish, current.fish + fishGain)
       const nextSalary = Math.max(0, current.salary + salaryGain)
@@ -89,7 +129,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const entry: LeaderboardEntry = { id: `${Date.now()}`, finishedAt: new Date().toISOString(), elapsedSeconds, salary: Math.round(nextSalary), fish: Math.round(nextFish), title }
         return { salary: nextSalary, fish: nextFish, elapsedSeconds, phase: 'won', finalTitle: title, salaryFlash: salaryGain > 0 ? 'gain' : current.salaryFlash, leaderboard: saveLeaderboardEntry(entry) }
       }
-      return { salary: nextSalary, fish: nextFish, elapsedSeconds, salaryFlash: salaryGain > 0 ? 'gain' : current.salaryFlash }
+      return { salary: nextSalary, fish: nextFish, elapsedSeconds, salaryFlash: salaryGain > 0 ? 'gain' : current.salaryFlash, ...phoneExtra, ...entryExtra }
     })
     if (salaryGain > 0) window.setTimeout(() => set({ salaryFlash: null }), 260)
     return { fishGain, salaryGain }
@@ -99,7 +139,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const message = randomTrashTalk()
     set((state) => {
       const nextSalary = Math.max(0, state.salary - amount)
-      return { salary: nextSalary, phase: nextSalary <= 0 ? 'lost' : state.phase, stunnedUntil: timestamp + GAME_CONFIG.timing.catchStunMs, currentAction: 'idle', catchNotice: { id: Date.now(), amount, title, message }, salaryFlash: 'loss', threatText: nextSalary <= 0 ? '工资清零' : '被老板抓包' }
+      const fwCooldown = state.currentAction === 'fakeWorking' ? { fakeWorkCooldownUntil: timestamp + GAME_CONFIG.limits.fakeWorkCooldownMs } : {}
+      return {
+        salary: nextSalary, phase: nextSalary <= 0 ? 'lost' : state.phase,
+        stunnedUntil: timestamp + GAME_CONFIG.timing.catchStunMs,
+        currentAction: 'idle' as PlayerAction,
+        catchNotice: { id: Date.now(), amount, title, message },
+        salaryFlash: 'loss' as FlashTone, threatText: nextSalary <= 0 ? '工资清零' : '被老板抓包',
+        ...fwCooldown,
+      }
     })
     window.setTimeout(() => set({ salaryFlash: null }), 280)
     window.setTimeout(() => get().clearCatchNotice(), GAME_CONFIG.timing.catchNoticeMs)

@@ -1,17 +1,36 @@
+import { BOSS_VISION_CONFIG, GAME_SIZE, LAYERS } from '../data/mobileLevelLayout'
+
 export const GAME_CONFIG = {
   title: '工位摸鱼：伪装局',
-  canvas: { width: 1080, height: 760, background: '#121821' },
+  screen: GAME_SIZE,
+  canvas: { width: LAYERS.map.width, height: LAYERS.map.height, background: '#121821' },
   economy: { initialSalary: 200, targetFish: 100, maxLeaderboardEntries: 10 },
   timing: {
-    actionCooldownMs: 500, catchStunMs: 1500, firstPatrolDelayMs: 3000,
-    bossWarningMs: 1000, bossRestMinMs: 3000, bossRestMaxMs: 5000,
-    illegalExposureMs: 1000, catchNoticeMs: 2000,
+    actionCooldownMs: 500, catchStunMs: 800, firstPatrolDelayMs: 3000,
+    bossWarningMs: 1000, bossRestMinMs: 1500, bossRestMaxMs: 4500,
+    illegalExposureMs: 700, catchNoticeMs: 2000,
     guideStorageKey: 'slackfish-guide-seen', leaderboardStorageKey: 'slackfish-leaderboard',
+    dtCapSeconds: 0.033,
   },
-  movement: { playerSpeed: 230, bossSpeed: 116, arrivalDistance: 7 },
-  vision: { distance: 160, angleDegrees: 90 },
-  penalties: { workstationFish: 10, pantryFish: 20, awayFromDesk: 5 },
-} as const
+  movement: { playerSpeed: 230, bossSpeed: 215, arrivalDistance: 7 },
+  vision: { distance: BOSS_VISION_CONFIG.distance, angleDegrees: BOSS_VISION_CONFIG.angleDeg },
+  penalties: { workstationSlacking: 30, minorSlacking: 12, pantrySlacking: 50, offSeat: 20, fakeWorkFail: 10 },
+  boss: {
+    openingMs: 800, scanDurationMs: 1050, scanRotationSpeed: 3.4,
+  },
+  exposure: {
+    thresholdMs: 700, decayMultiplier: 1.5,
+    multipliers: { workstation: 1, pantry: 2, fakeWorking: 0.5, corridor: 1.5, restroom: 0 } as Record<string, number>,
+  },
+  limits: {
+    fakeWorkMaxMs: 8000, fakeWorkCooldownMs: 6000,
+    restroomMaxEntries: 3, restroomPhoneMaxMs: 10000,
+    restroomWarningMs: 8000, restroomWarningIntervalMs: 5000, restroomStayAutoStopMs: 10000,
+  },
+  defaults: {
+    areaActions: { workstation: 'working', pantry: 'chatting', restroom: 'phone' } as Record<string, import('../types/game').PlayerAction>,
+  },
+}
 
 export const BOSS_TRASH_TALK = [
   '我让你带薪学习，不是带薪刷视频。',

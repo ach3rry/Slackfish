@@ -6,13 +6,34 @@ import { GAME_CONFIG } from '../game/config'
 import { isPointInVisionCone } from '../game/vision'
 import type { AreaId, PlayerAction, Point } from '../types/game'
 
+type SceneState = {
+  renderer: THREE.WebGLRenderer | null
+  scene: THREE.Scene | null
+  camera: THREE.OrthographicCamera | null
+  animId: number
+  player: THREE.Group | null
+  boss: THREE.Group | null
+  visionCone: THREE.Mesh | null
+  exposureMs: number
+  bossRouteIdx: number
+  bossFacing: number
+  playerTarget: Point | null
+  isMoving: boolean
+  bossTarget: Point | null
+  patrolTimer: ReturnType<typeof setTimeout> | null
+  bossPatrolling: boolean
+  fishPopup: number
+  salaryPopup: number
+  popupTimer: number
+}
+
 /** Three.js 3D 办公室场景 - 参照产品图的俯视视角 */
 export function OfficeScene3D() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const stateRef = useRef({
-    renderer: null as THREE.WebGLRenderer | null,
-    scene: null as THREE.Scene | null,
-    camera: null as THREE.OrthographicCamera | null,
+  const stateRef = useRef<SceneState>({
+    renderer: null,
+    scene: null,
+    camera: null,
     animId: 0,
     player: null as THREE.Group | null,
     boss: null as THREE.Group | null,
@@ -20,10 +41,10 @@ export function OfficeScene3D() {
     exposureMs: 0,
     bossRouteIdx: 0,
     bossFacing: Math.PI / 2,
-    playerTarget: null as Point | null,
+    playerTarget: null,
     isMoving: false,
-    bossTarget: null as Point | null,
-    patrolTimer: null as ReturnType<typeof setTimeout> | null,
+    bossTarget: null,
+    patrolTimer: null,
     bossPatrolling: false,
     fishPopup: 0, salaryPopup: 0, popupTimer: 0,
   })
@@ -100,10 +121,10 @@ export function OfficeScene3D() {
     // 加载产品图作为纹理
     const loader = new THREE.TextureLoader()
     const areas = [
-      { id: 'bossOffice', img: '/images/bossOffice.png', ...LEVEL_AREAS.bossOffice },
-      { id: 'workstation', img: '/images/workstation.png', ...LEVEL_AREAS.workstation },
-      { id: 'pantry', img: '/images/breakroom.png', ...LEVEL_AREAS.pantry },
-      { id: 'restroom', img: '/images/restroom.png', ...LEVEL_AREAS.restroom },
+      { ...LEVEL_AREAS.bossOffice, img: '/images/bossOffice.png' },
+      { ...LEVEL_AREAS.workstation, img: '/images/workstation.png' },
+      { ...LEVEL_AREAS.pantry, img: '/images/breakroom.png' },
+      { ...LEVEL_AREAS.restroom, img: '/images/restroom.png' },
     ]
 
     for (const area of areas) {
@@ -283,7 +304,7 @@ const moveTowards = (from: Point, to: Point, dist: number) => {
   return { point: { x: from.x + dx * r, y: from.y + dy * r }, arrived: false, angle: Math.atan2(dy, dx) }
 }
 
-function updatePlayer(s: typeof stateRef extends React.RefObject<infer T> ? T : never, dt: number) {
+function updatePlayer(s: SceneState, dt: number) {
   if (!s.player || !s.playerTarget) return
   const store = useGameStore.getState()
   const cur = { x: s.player.position.x, y: s.player.position.z }
@@ -294,7 +315,7 @@ function updatePlayer(s: typeof stateRef extends React.RefObject<infer T> ? T : 
   if (next.arrived) { s.playerTarget = null; s.isMoving = false; store.setAction('idle', true) }
 }
 
-function updateBoss(s: typeof stateRef extends React.RefObject<infer T> ? T : never, dt: number) {
+function updateBoss(s: SceneState, dt: number) {
   if (!s.boss || !s.bossTarget) return
   const store = useGameStore.getState()
   if (store.bossStatus !== 'patrolling') return
@@ -314,7 +335,7 @@ function updateBoss(s: typeof stateRef extends React.RefObject<infer T> ? T : ne
   }
 }
 
-function finishBossPatrol(s: typeof stateRef extends React.RefObject<infer T> ? T : never) {
+function finishBossPatrol(s: SceneState) {
   if (!s.boss) return
   s.boss.position.set(BOSS_SPAWN.x, 0, BOSS_SPAWN.y)
   s.boss.rotation.y = 0; s.bossTarget = null; s.exposureMs = 0
@@ -323,7 +344,7 @@ function finishBossPatrol(s: typeof stateRef extends React.RefObject<infer T> ? 
   s.patrolTimer = setTimeout(() => startBossWarning(s), delay)
 }
 
-function startBossWarning(s: typeof stateRef extends React.RefObject<infer T> ? T : never) {
+function startBossWarning(s: SceneState) {
   const store = useGameStore.getState()
   if (store.phase !== 'playing') return
   store.setBossStatus('warning')
@@ -334,13 +355,13 @@ function startBossWarning(s: typeof stateRef extends React.RefObject<infer T> ? 
   }, GAME_CONFIG.timing.bossWarningMs)
 }
 
-function startFirstPatrol(s: typeof stateRef extends React.RefObject<infer T> ? T : never) {
+function startFirstPatrol(s: SceneState) {
   s.patrolTimer = setTimeout(() => startBossWarning(s), GAME_CONFIG.timing.firstPatrolDelayMs)
 }
 
 function Phaser_Math_Between(min: number, max: number) { return min + Math.floor(Math.random() * (max - min + 1)) }
 
-function updateVision(s: typeof stateRef extends React.RefObject<infer T> ? T : never) {
+function updateVision(s: SceneState) {
   if (!s.visionCone || !s.boss) return
   const store = useGameStore.getState()
   s.visionCone.visible = store.bossStatus === 'patrolling'
@@ -349,7 +370,7 @@ function updateVision(s: typeof stateRef extends React.RefObject<infer T> ? T : 
   s.visionCone.rotation.z = -(s.bossFacing + Math.PI / 2)
 }
 
-function updateGameLoop(s: typeof stateRef extends React.RefObject<infer T> ? T : never, dt: number) {
+function updateGameLoop(s: SceneState, dt: number) {
   const store = useGameStore.getState()
   if (!s.player || !s.boss) return
 
@@ -383,7 +404,7 @@ function isIllegal(area: AreaId, action: PlayerAction) {
   return action === 'watching' || action === 'chips'
 }
 
-function catchPlayer(s: typeof stateRef extends React.RefObject<infer T> ? T : never) {
+function catchPlayer(s: SceneState) {
   const store = useGameStore.getState()
   let amount = GAME_CONFIG.penalties.awayFromDesk; let title = '离岗警告'
   if (store.currentArea === 'workstation' && (store.currentAction === 'watching' || store.currentAction === 'chips')) { amount = GAME_CONFIG.penalties.workstationFish; title = '轻度警告' }

@@ -16,7 +16,7 @@ export function GameCanvas() {
       height: GAME_CONFIG.canvas.height,
       backgroundColor: GAME_CONFIG.canvas.background,
       scene: new OfficeScene(),
-      scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+      scale: { mode: Phaser.Scale.NONE },
       physics: { default: 'arcade', arcade: { debug: false } },
       pixelArt: false,
     })
