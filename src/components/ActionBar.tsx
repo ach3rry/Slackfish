@@ -43,6 +43,9 @@ export function ActionBar() {
   const currentArea = useGameStore((s) => s.currentArea)
   const currentAction = useGameStore((s) => s.currentAction)
   const bossStatus = useGameStore((s) => s.bossStatus)
+  const threatText = useGameStore((s) => s.threatText)
+  const subPage = useGameStore((s) => s.subPage)
+  const setSubPage = useGameStore((s) => s.setSubPage)
   const cooldownUntil = useGameStore((s) => s.cooldownUntil)
   const stunnedUntil = useGameStore((s) => s.stunnedUntil)
 
@@ -60,7 +63,7 @@ export function ActionBar() {
   return (
     <>
       <div className="absolute z-30 text-lg font-black text-cyan-100" style={{ left: 28, top: 1430 }}>{lockText}</div>
-      {(bossStatus === 'patrolling' && currentArea !== 'restroom') || currentArea === 'pantry' ? (
+      {(threatText.includes('暴露') || threatText.includes('注意') || threatText.includes('危险')) ? (
         <div
           className="pointer-events-none absolute z-40 bg-contain bg-center bg-no-repeat"
           style={{ left: 188, top: 1232, width: 340, height: 200, backgroundImage: 'url(/ui2d/warning-high-risk-live.png)' }}
@@ -130,16 +133,28 @@ export function ActionBar() {
 
       {/* 底部导航 */}
       <nav className="absolute z-30" style={rectStyle(LAYERS.bottomNav)}>
-        {BOTTOM_NAV_BUTTONS.map((button) => (
-          <button
-            key={button.id}
-            type="button"
-            className="absolute bg-contain bg-center bg-no-repeat active:scale-95"
-            style={{ left: button.x - LAYERS.bottomNav.x, top: button.y - LAYERS.bottomNav.y, width: button.width, height: button.height, backgroundImage: `url(/ui2d/${button.iconKey}-live.png)` }}
-            aria-label={button.label}
-            title={button.label}
-          />
-        ))}
+        {BOTTOM_NAV_BUTTONS.map((button) => {
+          const isActive = button.id === 'office' ? !subPage : subPage === button.id
+          return (
+            <button
+              key={button.id}
+              type="button"
+              className="absolute bg-contain bg-center bg-no-repeat active:scale-95 transition-all duration-150"
+              style={{
+                left: button.x - LAYERS.bottomNav.x,
+                top: button.y - LAYERS.bottomNav.y,
+                width: button.width,
+                height: button.height,
+                backgroundImage: `url(/ui2d/${button.iconKey}-live.png)`,
+                filter: isActive ? 'brightness(1.3) drop-shadow(0 0 8px rgba(250,204,21,0.6))' : 'brightness(0.7)',
+                transform: isActive ? 'scale(1.05)' : undefined,
+              }}
+              onClick={() => setSubPage(button.id === 'office' ? null : button.id)}
+              aria-label={button.label}
+              title={button.label}
+            />
+          )
+        })}
       </nav>
     </>
   )

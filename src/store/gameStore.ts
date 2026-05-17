@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { BOSS_TRASH_TALK, GAME_CONFIG } from '../game/config'
 import { LEVEL_ACTIONS } from '../data/level1'
 import { getRankTitle, loadLeaderboard, saveLeaderboardEntry } from '../utils/leaderboard'
-import type { AreaId, BossBehavior, BossMood, DisguiseLevel, GamePhase, LeaderboardEntry, NpcData, PlayerAction, RhythmPhase, BossStatus, CatchNotice } from '../types/game'
+import type { AreaId, BossBehavior, BossMood, DisguiseLevel, GamePhase, LeaderboardEntry, PlayerAction, RhythmPhase, BossStatus, CatchNotice } from '../types/game'
 
 type FlashTone = 'gain' | 'loss' | null
 
@@ -34,7 +34,8 @@ type GameState = {
   rhythmPhase: RhythmPhase
   rhythmTimer: number
   disguiseLevel: DisguiseLevel
-  npcs: NpcData[]
+  subPage: string | null
+  placeholderOpen: boolean
   startGame: () => void
   restartGame: () => void
   setArea: (area: AreaId) => void
@@ -44,8 +45,9 @@ type GameState = {
   setThreatText: (text: string) => void
   setStunnedUntil: (timestamp: number) => void
   tickEconomy: (deltaSeconds: number) => { fishGain: number; salaryGain: number }
-  applyCatch: (amount: number, title: string) => void
+  applyCatch: (amount: number, title: string, message?: string) => void
   clearCatchNotice: () => void
+  spendSalary: (amount: number) => boolean
   setGuideOpen: (open: boolean) => void
   markGuideSeen: () => void
   refreshLeaderboard: () => void
@@ -54,8 +56,9 @@ type GameState = {
   setRhythmPhase: (phase: RhythmPhase) => void
   setRhythmTimer: (timer: number) => void
   updateDisguiseLevel: () => void
-  setNpcs: (npcs: NpcData[]) => void
-  updateNpc: (id: number, partial: Partial<NpcData>) => void
+  setSubPage: (page: string | null) => void
+  showPlaceholder: () => void
+  hidePlaceholder: () => void
 }
 
 const now = () => performance.now()
@@ -88,7 +91,9 @@ const initialState = () => ({
   fakeWorkStartMs: 0, fakeWorkCooldownUntil: 0,
   restroomEntries: 0, restroomEntryStartMs: 0, restroomPhoneTotalMs: 0, restroomLastWarningMs: 0,
   suspicion: 0, rhythmPhase: 'calm' as RhythmPhase, rhythmTimer: 0,
-  disguiseLevel: 0 as DisguiseLevel, npcs: [] as NpcData[],
+  disguiseLevel: 0 as DisguiseLevel,
+  subPage: null as string | null,
+  placeholderOpen: false,
 })
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -144,12 +149,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!action) { set((c) => ({ elapsedSeconds: c.elapsedSeconds + deltaSeconds })); return { fishGain: 0, salaryGain: 0 } }
     const fishGain = action.fishPerSecond * deltaSeconds
     const salaryGain = action.salaryPerSecond * deltaSeconds
-    const phoneExtra = state.currentAction === 'phone' ? { restroomPhoneTotalMs: state.restroomPhoneTotalMs + deltaSeconds * 1000 } : {}
-    const entryExtra = (state.currentArea === 'restroom' && state.restroomEntryStartMs > 0 && state.restroomEntries === 0)
-      ? { restroomEntries: 1, restroomEntryStartMs: now() }
-      : {}
+    const phoneExtra = {} as Record<string, number>
     set((current) => {
-      const nextFish = Math.min(GAME_CONFIG.economy.targetFish, current.fish + fishGain)
+      const nextFish = Math.max(0, Math.min(GAME_CONFIG.economy.targetFish, current.fish + fishGain))
       const nextSalary = Math.max(0, current.salary + salaryGain)
       const elapsedSeconds = current.elapsedSeconds + deltaSeconds
       const newDisguise = getDisguise(nextFish)
@@ -159,14 +161,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         const entry: LeaderboardEntry = { id: `${Date.now()}`, finishedAt: new Date().toISOString(), elapsedSeconds, salary: Math.round(nextSalary), fish: Math.round(nextFish), title }
         return { salary: nextSalary, fish: nextFish, elapsedSeconds, phase: 'won', finalTitle: title, salaryFlash: salaryGain > 0 ? 'gain' : current.salaryFlash, leaderboard: saveLeaderboardEntry(entry) }
       }
-      return { salary: nextSalary, fish: nextFish, elapsedSeconds, salaryFlash: salaryGain > 0 ? 'gain' : current.salaryFlash, disguiseLevel: newDisguise, ...phoneExtra, ...entryExtra }
+      return { salary: nextSalary, fish: nextFish, elapsedSeconds, salaryFlash: salaryGain > 0 ? 'gain' : current.salaryFlash, disguiseLevel: newDisguise, ...phoneExtra }
     })
     if (salaryGain > 0) window.setTimeout(() => set({ salaryFlash: null }), 260)
     return { fishGain, salaryGain }
   },
-  applyCatch: (amount, title) => {
+  applyCatch: (amount, title, message) => {
     const timestamp = now()
-    const message = randomTrashTalk()
+    const msg = message ?? randomTrashTalk()
     set((state) => {
       const nextSalary = Math.max(0, state.salary - amount)
       const fwCooldown = state.currentAction === 'fakeWorking' ? { fakeWorkCooldownUntil: timestamp + GAME_CONFIG.limits.fakeWorkCooldownMs } : {}
@@ -174,7 +176,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         salary: nextSalary, phase: nextSalary <= 0 ? 'lost' : state.phase,
         stunnedUntil: timestamp + GAME_CONFIG.timing.catchStunMs,
         currentAction: 'idle' as PlayerAction,
-        catchNotice: { id: Date.now(), amount, title, message },
+        catchNotice: { id: Date.now(), amount, title, message: msg },
         salaryFlash: 'loss' as FlashTone, threatText: nextSalary <= 0 ? '工资清零' : '被老板抓包',
         ...fwCooldown,
       }
@@ -183,6 +185,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     window.setTimeout(() => get().clearCatchNotice(), GAME_CONFIG.timing.catchNoticeMs)
   },
   clearCatchNotice: () => set({ catchNotice: null }),
+  spendSalary: (amount: number): boolean => {
+    const current = get().salary
+    if (current < amount) return false
+    set({ salary: current - amount, salaryFlash: 'loss' as FlashTone })
+    window.setTimeout(() => set({ salaryFlash: null }), 260)
+    return true
+  },
   setGuideOpen: (open) => set({ guideOpen: open }),
   markGuideSeen: () => { window.localStorage.setItem(GAME_CONFIG.timing.guideStorageKey, '1'); set({ guideOpen: false }) },
   refreshLeaderboard: () => set({ leaderboard: loadLeaderboard() }),
@@ -194,6 +203,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setRhythmPhase: (phase) => set({ rhythmPhase: phase }),
   setRhythmTimer: (timer) => set({ rhythmTimer: timer }),
   updateDisguiseLevel: () => set({ disguiseLevel: getDisguise(get().fish) }),
-  setNpcs: (npcs) => set({ npcs }),
-  updateNpc: (id, partial) => set((s) => ({ npcs: s.npcs.map(n => n.id === id ? { ...n, ...partial } : n) })),
+  setSubPage: (page) => set({ subPage: page }),
+  showPlaceholder: () => set({ placeholderOpen: true }),
+  hidePlaceholder: () => set({ placeholderOpen: false }),
 }))

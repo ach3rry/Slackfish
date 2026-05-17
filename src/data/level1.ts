@@ -48,12 +48,12 @@ export const LEVEL_AREAS: Record<string, AreaConfig> = {
 }
 
 export const LEVEL_ACTIONS: ActionConfig[] = [
-  { id: 'working', name: '认真工作', icon: '💻', area: 'workstation', fishPerSecond: 0, salaryPerSecond: 2, risk: 'none', description: '无摸鱼收益，工资 +2/秒' },
+  { id: 'working', name: '认真工作', icon: '💻', area: 'workstation', fishPerSecond: -1.5, salaryPerSecond: 2, risk: 'none', description: '摸鱼进度 -1.5/秒，工资 +2/秒' },
   { id: 'watching', name: '看视频', icon: '📺', area: 'workstation', fishPerSecond: 3, salaryPerSecond: 0, risk: 'low', description: '摸鱼收益 +3/秒' },
   { id: 'chips', name: '吃薯片', icon: '🍟', area: 'workstation', fishPerSecond: 2, salaryPerSecond: 0, risk: 'veryLow', description: '摸鱼收益 +2/秒' },
   { id: 'milkTea', name: '喝奶茶', icon: '🧋', area: 'pantry', fishPerSecond: 8, salaryPerSecond: 0, risk: 'extreme', description: '摸鱼收益 +8/秒' },
   { id: 'chatting', name: '闲聊摸鱼', icon: '💬', area: 'pantry', fishPerSecond: 7, salaryPerSecond: 0, risk: 'extreme', description: '摸鱼收益 +7/秒' },
-  { id: 'fakeWorking', name: '假装工作', icon: '👩‍💻', area: 'pantry', fishPerSecond: 4, salaryPerSecond: 0, risk: 'medium', disguise: true, description: '摸鱼收益 +4/秒，伪装中' },
+  { id: 'fakeWorking', name: '假装工作', icon: '👩‍💻', area: 'pantry', fishPerSecond: -1, salaryPerSecond: 0, risk: 'medium', disguise: true, description: '摸鱼进度 -1/秒，伪装中降低暴露' },
   { id: 'phone', name: '玩手机', icon: '📱', area: 'restroom', fishPerSecond: 5, salaryPerSecond: 0, risk: 'zero', description: '摸鱼收益 +5/秒，绝对安全' },
 ]
 

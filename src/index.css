@@ -16,3 +16,8 @@ body {
 
 button { -webkit-tap-highlight-color: transparent; user-select: none; }
 button:disabled { cursor: not-allowed !important; }
+
+@keyframes catchPop {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}

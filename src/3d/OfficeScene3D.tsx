@@ -406,9 +406,9 @@ function isIllegal(area: AreaId, action: PlayerAction) {
 
 function catchPlayer(s: SceneState) {
   const store = useGameStore.getState()
-  let amount = GAME_CONFIG.penalties.awayFromDesk; let title = '离岗警告'
-  if (store.currentArea === 'workstation' && (store.currentAction === 'watching' || store.currentAction === 'chips')) { amount = GAME_CONFIG.penalties.workstationFish; title = '轻度警告' }
-  else if (store.currentArea === 'pantry') { amount = GAME_CONFIG.penalties.pantryFish; title = '中度处罚' }
+  let amount = GAME_CONFIG.penalties.offSeat; let title = '离岗警告'
+  if (store.currentArea === 'workstation' && (store.currentAction === 'watching' || store.currentAction === 'chips')) { amount = GAME_CONFIG.penalties.workstationSlacking; title = '轻度警告' }
+  else if (store.currentArea === 'pantry') { amount = GAME_CONFIG.penalties.pantrySlacking; title = '中度处罚' }
   s.exposureMs = 0; s.playerTarget = null; s.isMoving = false
   store.applyCatch(amount, title)
 }

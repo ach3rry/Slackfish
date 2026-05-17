@@ -13,27 +13,13 @@ export type PlayerAction =
 
 export type BossStatus = 'resting' | 'warning' | 'patrolling'
 
-export type BossBehavior = 'resting' | 'warning' | 'opening' | 'patrolling' | 'scanning' | 'returning' | 'fakeReturn'
+export type BossBehavior = 'resting' | 'warning' | 'opening' | 'patrolling' | 'scanning' | 'checking' | 'returning' | 'fakeReturn' | 'hunting'
 
 export type BossMood = 'calm' | 'suspicious' | 'angry' | 'furious'
 
 export type RhythmPhase = 'calm' | 'patrol' | 'pressure' | 'buffer'
 
 export type DisguiseLevel = 0 | 1 | 2 | 3
-
-export type NpcState =
-  | 'idle'
-  | 'walking'
-  | 'working'
-  | 'fakeWorking'
-  | 'fishWorking'
-  | 'chatting'
-  | 'pantryRelax'
-  | 'restroomBreak'
-  | 'escaping'
-  | 'stunned'
-
-export type NpcPersonality = 'serious' | 'slacker' | 'social' | 'loner'
 
 export type GamePhase = 'start' | 'playing' | 'won' | 'lost'
 
@@ -83,6 +69,10 @@ export type CatchNotice = {
   title: string
   message: string
 }
+
+export type NpcPersonality = 'serious' | 'slacker' | 'social' | 'loner'
+
+export type NpcState = 'working' | 'fishWorking' | 'chatting' | 'pantryRelax' | 'restroomBreak' | 'walking' | 'idle' | 'fakeWorking' | 'stunned'
 
 export type NpcData = {
   id: number

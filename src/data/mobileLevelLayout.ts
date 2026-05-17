@@ -18,39 +18,39 @@ export const LAYERS = {
   modal: { x: 0, y: 0, width: 1080, height: 1920, zIndex: 60 },
 } satisfies Record<string, LayoutRect>
 
-// === 基于切图边缘坐标 (ASSET_PLACEMENT) 的区域定义 ===
-// 地图尺寸: 1080 x 1300
-// 关键边界: 工位右墙 x=458 | 走廊 x=458~608 | 右侧房间 x=608+
-// 右侧纵向: 茶水间 y=0~464 | 卫生间 y=464~805 | 老板办 y=805~1300
+// === 基于地图像素分析的区域定义 ===
+// 地图尺寸: 1080 x 1300 (原图 1086x1448 缩放)
+// 关键边界: 工位右墙 x=467 | 走廊 x=467~608 | 右侧房间 x=608+
+// 右侧纵向: 茶水间 y=0~475 | 卫生间 y=475~812 | 老板办 y=812~1300
 export const AREAS = {
   workstation: {
     id: 'workstation', name: '工位区', type: 'room', riskLevel: 'low',
-    x: 0, y: 0, width: 458, height: 1300,
-    center: { x: 229, y: 500 }, labelPosition: { x: 229, y: 30 }, actionPoint: { x: 229, y: 400 },
+    x: 0, y: 0, width: 467, height: 1300,
+    center: { x: 234, y: 500 }, labelPosition: { x: 234, y: 30 }, actionPoint: { x: 234, y: 400 },
     isSafeZone: false, playerBlocked: false, bossAllowed: true,
   },
   mainCorridor: {
     id: 'mainCorridor', name: '主走廊', type: 'corridor', riskLevel: 'medium',
-    x: 458, y: 0, width: 150, height: 1300,
-    center: { x: 533, y: 650 }, labelPosition: { x: 533, y: 650 }, actionPoint: { x: 533, y: 650 },
+    x: 467, y: 0, width: 141, height: 1300,
+    center: { x: 537, y: 650 }, labelPosition: { x: 537, y: 650 }, actionPoint: { x: 537, y: 650 },
     isSafeZone: false, playerBlocked: false, bossAllowed: true,
   },
   teaRoom: {
     id: 'teaRoom', name: '茶水间', type: 'room', riskLevel: 'high',
-    x: 608, y: 0, width: 472, height: 464,
-    center: { x: 844, y: 232 }, labelPosition: { x: 844, y: 30 }, actionPoint: { x: 844, y: 250 },
+    x: 608, y: 0, width: 472, height: 475,
+    center: { x: 844, y: 238 }, labelPosition: { x: 844, y: 30 }, actionPoint: { x: 844, y: 250 },
     isSafeZone: false, playerBlocked: false, bossAllowed: true,
   },
   restroom: {
     id: 'restroom', name: '卫生间', type: 'room', riskLevel: 'safe',
-    x: 608, y: 464, width: 472, height: 341,
-    center: { x: 844, y: 635 }, labelPosition: { x: 844, y: 480 }, actionPoint: { x: 844, y: 635 },
+    x: 608, y: 475, width: 472, height: 337,
+    center: { x: 844, y: 644 }, labelPosition: { x: 844, y: 490 }, actionPoint: { x: 844, y: 644 },
     isSafeZone: true, playerBlocked: false, bossAllowed: false,
   },
   bossOffice: {
     id: 'bossOffice', name: '领导办公室', type: 'room', riskLevel: 'boss',
-    x: 608, y: 805, width: 472, height: 495,
-    center: { x: 844, y: 1053 }, labelPosition: { x: 844, y: 820 }, actionPoint: { x: 844, y: 1053 },
+    x: 608, y: 812, width: 472, height: 488,
+    center: { x: 844, y: 1056 }, labelPosition: { x: 844, y: 828 }, actionPoint: { x: 844, y: 1056 },
     isSafeZone: false, playerBlocked: true, bossAllowed: true,
   },
 } satisfies Record<string, {
@@ -70,12 +70,12 @@ export const AREAS = {
   bossAllowed: boolean
 }>
 
-// 门洞坐标: 工位右墙 x=458, 右侧房间左墙 x=608
+// 门洞坐标: 工位右墙 x=467, 右侧房间左墙 x=608
 export const ROOM_DOORS = [
-  // 工位区上门: 工位右墙 x=458
-  { id: 'workstation-upper', from: 'workstation', to: 'mainCorridor', x: 445, y: 320, width: 26, height: 40, enterPointFrom: { x: 445, y: 340 }, enterPointTo: { x: 470, y: 340 }, bossOnly: false, playerAllowed: true },
+  // 工位区上门: 工位右墙 x=467
+  { id: 'workstation-upper', from: 'workstation', to: 'mainCorridor', x: 455, y: 320, width: 26, height: 40, enterPointFrom: { x: 455, y: 340 }, enterPointTo: { x: 480, y: 340 }, bossOnly: false, playerAllowed: true },
   // 工位区下门
-  { id: 'workstation-lower', from: 'workstation', to: 'mainCorridor', x: 445, y: 560, width: 26, height: 40, enterPointFrom: { x: 445, y: 580 }, enterPointTo: { x: 470, y: 580 }, bossOnly: false, playerAllowed: true },
+  { id: 'workstation-lower', from: 'workstation', to: 'mainCorridor', x: 455, y: 560, width: 26, height: 40, enterPointFrom: { x: 455, y: 580 }, enterPointTo: { x: 480, y: 580 }, bossOnly: false, playerAllowed: true },
   // 茶水间门: 右侧房间左墙 x=608
   { id: 'teaRoom-main', from: 'teaRoom', to: 'mainCorridor', x: 595, y: 212, width: 26, height: 40, enterPointFrom: { x: 608, y: 232 }, enterPointTo: { x: 595, y: 232 }, bossOnly: false, playerAllowed: true },
   // 卫生间门
@@ -124,9 +124,9 @@ export const BOSS_SPAWN_AND_PATROL = {
     [
       wp('leave-office', 533, 805, 'up', 250, 'walk'),
       wp('corridor-mid', 533, 500, 'up', 350, 'scan'),
-      wp('check-workstation', 380, 400, 'left', 1000, 'check'),
+      wp('check-workstation', 380, 400, 'left', 2500, 'check'),
       wp('corridor-mid-b', 533, 400, 'up', 250, 'walk'),
-      wp('check-tea-room', 700, 232, 'right', 1000, 'check'),
+      wp('check-tea-room', 700, 232, 'right', 2500, 'check'),
       wp('return-door', 533, 805, 'down', 250, 'return'),
       wp('rest', 844, 1053, 'down', 0, 'rest', false),
     ],
@@ -134,9 +134,9 @@ export const BOSS_SPAWN_AND_PATROL = {
     [
       wp('leave-office', 533, 805, 'up', 250, 'walk'),
       wp('corridor-top', 533, 150, 'up', 400, 'scan'),
-      wp('check-tea-room', 700, 232, 'right', 1000, 'check'),
+      wp('check-tea-room', 700, 232, 'right', 2500, 'check'),
       wp('corridor-mid', 533, 500, 'down', 250, 'walk'),
-      wp('check-workstation', 380, 500, 'left', 1000, 'check'),
+      wp('check-workstation', 380, 500, 'left', 2500, 'check'),
       wp('return-door', 533, 805, 'down', 250, 'return'),
       wp('rest', 844, 1053, 'down', 0, 'rest', false),
     ],
@@ -144,7 +144,7 @@ export const BOSS_SPAWN_AND_PATROL = {
     [
       wp('leave-office', 533, 805, 'up', 200, 'walk'),
       wp('corridor-mid', 533, 500, 'up', 300, 'scan'),
-      wp('check-workstation', 380, 500, 'left', 900, 'check'),
+      wp('check-workstation', 380, 500, 'left', 2500, 'check'),
       wp('corridor-top', 533, 150, 'up', 500, 'scan'),
       wp('return-door', 533, 805, 'down', 250, 'return'),
       wp('rest', 844, 1053, 'down', 0, 'rest', false),
@@ -153,8 +153,8 @@ export const BOSS_SPAWN_AND_PATROL = {
 }
 
 export const BOSS_VISION_CONFIG = {
-  angleDeg: 56,
-  distance: 330,
+  angleDeg: 100,
+  distance: 450,
   color: 0xff2626,
   alpha: 0.32,
   originOffset: { x: 0, y: -28 },

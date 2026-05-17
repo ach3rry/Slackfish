@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useGameStore } from './store/gameStore'
 import { GameCanvas } from './components/GameCanvas'
-import { OfficeScene3D } from './3d/OfficeScene3D'
 import { HUD } from './components/HUD'
 import { ActionBar } from './components/ActionBar'
 import { ModalLayer } from './components/ModalLayer'
+import SubPages from './components/SubPages'
 import { GAME_SIZE, LAYERS } from './data/mobileLevelLayout'
 
 const getStageScale = () => Math.min(window.innerWidth / GAME_SIZE.width, window.innerHeight / GAME_SIZE.height)
 
 export default function App() {
   const phase = useGameStore((s) => s.phase)
-  const [mode, setMode] = useState<'2d' | '3d'>('2d')
   const [scale, setScale] = useState(getStageScale)
+  const showPlaceholder = useGameStore((s) => s.showPlaceholder)
 
   useEffect(() => {
     const onResize = () => setScale(getStageScale())
@@ -34,12 +34,12 @@ export default function App() {
         {phase !== 'start' && (
           <>
             <div className="absolute left-0" style={{ top: LAYERS.map.y, width: LAYERS.map.width, height: LAYERS.map.height }}>
-              {mode === '2d' ? <GameCanvas /> : <OfficeScene3D />}
+              <GameCanvas />
             </div>
             <HUD />
             <ActionBar />
             <button
-              onClick={() => setMode(mode === '2d' ? '3d' : '2d')}
+              onClick={showPlaceholder}
               className="absolute z-40 bg-contain bg-center bg-no-repeat text-[0px] active:scale-95"
               style={{
                 top: 48,
@@ -47,16 +47,16 @@ export default function App() {
                 width: 72,
                 height: 72,
                 backgroundImage: 'url(/ui2d/nav-settings.png)',
-                filter: mode === '3d' ? 'drop-shadow(0 0 10px #58a6ff)' : undefined,
               }}
-              title={mode === '2d' ? '切换 3D' : '切换 2D'}
-              aria-label={mode === '2d' ? '切换 3D' : '切换 2D'}
+              title="设置"
+              aria-label="设置"
             >
               ◈
             </button>
           </>
         )}
         <ModalLayer />
+        <SubPages />
       </div>
     </div>
   )

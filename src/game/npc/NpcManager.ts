@@ -8,10 +8,13 @@ const CFG = GAME_CONFIG.npc
 const textStyle = { fontFamily: 'Microsoft YaHei, SimHei, sans-serif', fontSize: '16px', color: '#a0b8d0' }
 const bubbleStyle = { fontFamily: 'Microsoft YaHei, SimHei, sans-serif', fontSize: '15px', color: '#f0f0f0', stroke: '#1a1a2e', strokeThickness: 3 }
 
+const PERSONALITY_LABEL: Record<string, string> = { serious: '工作狂', slacker: '摸鱼王', social: '社牛', loner: '独行侠' }
+
 type NpcRender = {
   container: Phaser.GameObjects.Container
   sprite: Phaser.GameObjects.Image
   label: Phaser.GameObjects.Text
+  roleText: Phaser.GameObjects.Text
   bubble: Phaser.GameObjects.Text
   shadow: Phaser.GameObjects.Ellipse
   stateIcon: Phaser.GameObjects.Text
@@ -39,10 +42,10 @@ const pickRandom = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * a
 
 function detectArea(point: Point): AreaId {
   const x = point.x, y = point.y
-  if (x < 458) return 'workstation'
+  if (x < 467) return 'workstation'
   if (x >= 608) {
-    if (y < 464) return 'pantry'
-    if (y < 805) return 'restroom'
+    if (y < 475) return 'pantry'
+    if (y < 812) return 'restroom'
     return 'bossOffice'
   }
   return 'corridor'
@@ -278,13 +281,14 @@ export class NpcManager {
     const container = this.scene.add.container(npc.x, npc.y).setDepth(10)
 
     const shadow = this.scene.add.ellipse(0, 8, 30, 9, 0x000000, 0.2).setDepth(0)
-    const sprite = this.scene.add.image(0, 0, 'player-idle').setDisplaySize(50, 74).setOrigin(0.5, 0.9).setDepth(1).setTint(npc.tint)
+    const sprite = this.scene.add.image(0, 0, 'player-idle').setDisplaySize(56, 82).setOrigin(0.5, 0.9).setDepth(1).setTint(npc.tint)
     const label = this.scene.add.text(0, 22, npc.name, { ...textStyle, fontSize: '14px' }).setOrigin(0.5).setDepth(2).setAlpha(0.8)
+    const roleText = this.scene.add.text(0, 36, PERSONALITY_LABEL[npc.personality] ?? '', { ...textStyle, fontSize: '11px', color: '#8a9ab5' }).setOrigin(0.5).setDepth(2).setAlpha(0.6)
     const bubble = this.scene.add.text(0, -55, '', { ...bubbleStyle, backgroundColor: '#1a1a2ecc', padding: { x: 6, y: 3 } }).setOrigin(0.5).setDepth(3).setVisible(false)
     const stateIcon = this.scene.add.text(0, -38, '', { fontSize: '14px' }).setOrigin(0.5).setDepth(2).setAlpha(0.7)
 
-    container.add([shadow, sprite, label, bubble, stateIcon])
-    this.renders.set(npc.id, { container, sprite, label, bubble, shadow, stateIcon })
+    container.add([shadow, sprite, label, roleText, bubble, stateIcon])
+    this.renders.set(npc.id, { container, sprite, label, roleText, bubble, shadow, stateIcon })
   }
 
   private updateRender(npc: NpcData) {
@@ -293,9 +297,10 @@ export class NpcManager {
 
     r.container.setPosition(npc.x, npc.y)
 
-    const texture = this.getTextureForState(npc.state)
-    const isLarge = texture !== 'player-idle' && texture !== 'player-walk-1' && texture !== 'player-side'
-    r.sprite.setTexture(texture).setDisplaySize(isLarge ? 110 : 50, isLarge ? 98 : 74)
+    const texture = this.getTextureForState(npc)
+    const isAction = texture !== 'player-idle' && texture !== 'player-walk-1' && texture !== 'player-walk-2' && texture !== 'player-side'
+    const isPhone = texture === 'player-phone'
+    r.sprite.setTexture(texture).setDisplaySize(isAction ? (isPhone ? 112 : 146) : 56, isAction ? 118 : 82)
 
     if (npc.state === 'stunned') {
       r.sprite.setAlpha(0.6)
@@ -309,13 +314,18 @@ export class NpcManager {
     r.stateIcon.setText(icon).setVisible(!!icon)
   }
 
-  private getTextureForState(state: NpcState): string {
-    switch (state) {
+  private getTextureForState(npc: NpcData): string {
+    switch (npc.state) {
       case 'working': case 'fakeWorking': return 'player-work'
-      case 'fishWorking': return Math.random() < 0.5 ? 'player-chips' : 'player-phone'
+      case 'fishWorking': return npc.id % 2 === 0 ? 'player-chips' : 'player-phone'
       case 'chatting': case 'pantryRelax': return 'player-milk-tea'
       case 'restroomBreak': return 'player-phone'
-      case 'walking': return Math.floor(this.scene.time.now / 200) % 2 === 0 ? 'player-walk-1' : 'player-walk-2'
+      case 'walking': {
+        const frame = Math.floor(this.scene.time.now / 200) % 2 === 0 ? 'player-walk-1' : 'player-walk-2'
+        const dx = npc.targetX - npc.x
+        if (Math.abs(dx) > 5) return 'player-side'
+        return frame
+      }
       default: return 'player-idle'
     }
   }

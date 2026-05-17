@@ -4,23 +4,23 @@ export const GAME_CONFIG = {
   title: '工位摸鱼：伪装局',
   screen: GAME_SIZE,
   canvas: { width: LAYERS.map.width, height: LAYERS.map.height, background: '#121821' },
-  economy: { initialSalary: 200, targetFish: 100, maxLeaderboardEntries: 10 },
+  economy: { initialSalary: 100, targetFish: 100, maxLeaderboardEntries: 10 },
   timing: {
-    actionCooldownMs: 500, catchStunMs: 800, firstPatrolDelayMs: 3000,
-    bossWarningMs: 1000, bossRestMinMs: 1500, bossRestMaxMs: 4500,
+    actionCooldownMs: 400, catchStunMs: 1000, firstPatrolDelayMs: 2500,
+    bossWarningMs: 800, bossRestMinMs: 600, bossRestMaxMs: 1800,
     illegalExposureMs: 700, catchNoticeMs: 2000,
     guideStorageKey: 'slackfish-guide-seen', leaderboardStorageKey: 'slackfish-leaderboard',
     dtCapSeconds: 0.033,
   },
-  movement: { playerSpeed: 230, bossSpeed: 215, arrivalDistance: 7 },
+  movement: { playerSpeed: 230, bossSpeed: 235, arrivalDistance: 7 },
   vision: { distance: BOSS_VISION_CONFIG.distance, angleDegrees: BOSS_VISION_CONFIG.angleDeg },
-  penalties: { workstationSlacking: 30, minorSlacking: 12, pantrySlacking: 50, offSeat: 20, fakeWorkFail: 10 },
+  penalties: { workstationSlacking: 35, minorSlacking: 18, pantrySlacking: 55, offSeat: 25, fakeWorkFail: 15 },
   boss: {
-    openingMs: 800, scanDurationMs: 1050, scanRotationSpeed: 3.4,
+    openingMs: 800, scanDurationMs: 2200, scanRotationSpeed: 2.0,
   },
   exposure: {
-    thresholdMs: 700, decayMultiplier: 1.5,
-    multipliers: { workstation: 1, pantry: 2, fakeWorking: 0.5, corridor: 1.5, restroom: 0 } as Record<string, number>,
+    thresholdMs: 800, decayMultiplier: 0.8,
+    multipliers: { workstation: 1.3, pantry: 2.2, fakeWorking: 0.6, corridor: 1.8, restroom: 0 } as Record<string, number>,
   },
   limits: {
     fakeWorkMaxMs: 8000, fakeWorkCooldownMs: 6000,
@@ -44,18 +44,21 @@ export const GAME_CONFIG = {
   },
 
   bossAI: {
-    fakeReturnChance: 0.18,
-    fakeReturnDelayMs: 800,
-    suddenStopChance: 0.12,
-    suddenStopDurationMs: 1200,
-    lookBackChance: 0.22,
+    fakeReturnChance: 0.25,
+    fakeReturnDelayMs: 600,
+    suddenStopChance: 0.18,
+    suddenStopDurationMs: 1500,
+    lookBackChance: 0.30,
     lookBackAngle: Math.PI,
-    lookBackDurationMs: 600,
-    angryExtraSpeed: 40,
-    furiousExtraSpeed: 70,
+    lookBackDurationMs: 800,
+    angryExtraSpeed: 50,
+    furiousExtraSpeed: 80,
     routeVariationCount: 6,
     npcCatchRadius: 120,
     npcCatchSuspicionGain: 15,
+    huntChance: { angry: 0.45, furious: 0.7 } as Record<string, number>,
+    moodExposureMultiplier: { calm: 1, suspicious: 1.3, angry: 1.7, furious: 2.2 } as Record<string, number>,
+    moodScanSpeedMultiplier: { calm: 1, suspicious: 1, angry: 1.3, furious: 1.6 } as Record<string, number>,
   },
 
   rhythm: {
@@ -108,6 +111,35 @@ export const GAME_CONFIG = {
     screenShakeOnWarning: { duration: 200, intensity: 0.005 },
     redFlashOnCatch: { duration: 300 },
     bossAngerPulse: { intervalMs: 500, scale: 0.05 },
+  },
+
+  exposureStages: {
+    safe: { minPct: 0, maxPct: 30 },
+    warning: { minPct: 30, maxPct: 70 },
+    danger: { minPct: 70, maxPct: 100 },
+  } as Record<string, { minPct: number; maxPct: number }>,
+
+  distanceFalloff: {
+    zones: [
+      { maxDistance: 150, rate: 1.0 },
+      { maxDistance: 300, rate: 0.7 },
+      { maxDistance: 450, rate: 0.45 },
+    ] as { maxDistance: number; rate: number }[],
+  },
+
+  visionFeedback: {
+    coneAlpha: 0.40,
+    coneExposureAlphaMax: 0.65,
+    vignetteMaxAlpha: 0.85,
+    heartbeatStartPct: 35,
+    heartbeatSpeed: 7.0,
+    ringColors: {
+      safe: { stroke: 0x66bb6a, alpha: 0.7 },
+      warning: { stroke: 0xfbbf24, alpha: 0.85 },
+      danger: { stroke: 0xef4444, alpha: 1.0 },
+    } as Record<string, { stroke: number; alpha: number }>,
+    stageDecayMultipliers: { safe: 1.0, warning: 0.6, danger: 0.3 } as Record<string, number>,
+    bossWarningTurnMs: 350,
   },
 }
 
