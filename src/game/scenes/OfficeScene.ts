@@ -803,10 +803,7 @@ export class OfficeScene extends Phaser.Scene {
       const playerArea = store.currentArea
       const areaConfig = LEVEL_AREAS[playerArea]
       if (areaConfig && playerArea !== 'bossOffice' && playerArea !== 'restroom') {
-        // Boss checks restroom from the corridor door, doesn't enter
-        const huntTarget = playerArea === 'restroom'
-          ? { x: 590, y: 635 }
-          : { x: areaConfig.center.x, y: areaConfig.center.y }
+        const huntTarget = { x: areaConfig.center.x, y: areaConfig.center.y }
         this.bossTarget = huntTarget
         this.bossBehavior = 'hunting'
         store.setBossBehavior('hunting')
